@@ -1,0 +1,66 @@
+MPXTRANS: AUDIO AND VIDEO TO TEXT
+=================================
+
+INSTALLING
+1. Drag the MPXTrans icon onto the Applications folder next to it.
+2. Open the Applications folder in Finder and launch MPXTrans.
+
+IF macOS WON'T OPEN THE APP
+The app isn't notarized by Apple, so on the first launch macOS may show
+a warning ("cannot verify the developer" or "Apple could not verify it is free
+of malware"). You only need to allow it once.
+
+  • macOS 15 and later. Close the warning with "Done", open System Settings,
+    go to Privacy & Security, scroll down, click "Open Anyway" next to MPXTrans
+    and confirm.
+
+  • macOS 13–14. In Finder, right-click MPXTrans, choose "Open", then click
+    "Open" again in the warning.
+
+  • If that didn't help, open Terminal and run:
+        xattr -dr com.apple.quarantine /Applications/MPXTrans.app
+
+FIRST LAUNCH
+If Subtits with downloaded models is already on this Mac, MPXTrans uses them
+right away: both apps share the models folder. If there are no models, the
+"Recognition Models" window opens. Click "Download" next to Whisper Large v3
+Turbo (about 870 MB). The model is downloaded once, after that everything
+works offline.
+
+HOW TO USE
+1. Drop an audio or video file in any format onto the window (MP3, M4A, WAV,
+   OGG, FLAC, MP4, MOV, MKV, WEBM, AVI…). You can also drop it onto the Dock
+   icon or click "Choose File".
+2. The text appears as it is recognized; the Dock icon shows the progress.
+3. You can fix the transcript right in the window, then:
+     • "Copy" puts all the text on the clipboard;
+     • "Save" writes a .txt file (or .srt for subtitles);
+     • the Share button sends it via AirDrop, Messages, Mail, Notes and more.
+4. At the top, choose the view: "Text" (with paragraphs), "Timecodes"
+   (the time of every phrase) or "SRT" (subtitles).
+
+The model and the speech language are chosen at the bottom of the window.
+If the result isn't good enough, click ↻ above the text and transcribe
+the file again with another model.
+
+SETTINGS (⌘,)
+  • Skip silence and music — Whisper won't make up phrases where nobody
+    speaks. On by default.
+  • Accurate mode — fewer mistakes, but slower. On by default.
+  • Names and terms — a hint with words that occur in your recordings
+    (names, companies) so that Whisper spells them correctly.
+
+SHORTCUTS
+  ⌘O ................ open a file
+  ⌘S ................ save the transcript
+  ⇧⌘C ............... copy all text
+  ⌘1 / ⌘2 / ⌘3 ...... text / timecodes / SRT
+  ⌘R ................ transcribe again
+  Esc or ⌘. ......... stop transcription
+  ⌘N ................ new transcription
+  ⌘F ................ find in the text
+
+REQUIREMENTS
+macOS 13.3 or later. MPXTrans is fastest on Macs with Apple Silicon (M1 and
+later): an hour of audio takes a few minutes. On Intel Macs recognition
+runs on the CPU and is noticeably slower.

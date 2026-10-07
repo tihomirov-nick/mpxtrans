@@ -1,0 +1,8 @@
+.build/
+build/
+dist/
+Vendor/downloads/
+# 154 MB universal binary, over GitHub's 100 MB file limit: scripts/fetch_ffmpeg.sh downloads it
+Vendor/ffmpeg/
+*.dmg
+.DS_Store
