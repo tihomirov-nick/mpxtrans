@@ -61,5 +61,6 @@ cp "$SRC/include/whisper.h" "$INC/"
 for h in ggml.h ggml-cpu.h ggml-backend.h ggml-alloc.h; do
     cp "$SRC/ggml/include/$h" "$INC/"
 done
+cp "$SRC/LICENSE" "$INC/LICENSE-whisper.cpp.txt"   # MIT notice for the copied headers
 echo "$WHISPER_VERSION" > "$OUT/VERSION"
 echo "whisper.cpp $WHISPER_VERSION built OK"
