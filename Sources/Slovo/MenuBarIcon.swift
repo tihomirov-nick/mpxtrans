@@ -3,24 +3,26 @@ import Combine
 import TransCore
 
 /// The icon in the menu bar while a transcription runs: the app icon in lines (style A: its squircle with the mark
-/// inside; B: the mark alone), a wave of upright strokes that moves gently and lines of text that get written as
-/// recognition goes on. At the end it shows the lines whole (or a cross) for a moment and goes away; a click brings
-/// the window forward. The animation is light (4 frames a second) and stops while the displays sleep or Reduce Motion
-/// is on: then only the progress changes the icon. Drawn in code as a template image like the menu bar icons of the
-/// author's other apps: 16 × 16 pt, the glyph in the middle 14 × 14 pt, 1.5 pt lines with round ends.
+/// inside; B: the mark alone), sound waves on the left that run into the middle and calm down there, and the word's
+/// line on the right that grows as recognition goes on. At the end it shows the line whole (or a cross) for a moment
+/// and goes away; a click brings the window forward. The animation is light (4 frames a second) and stops while the
+/// displays sleep or Reduce Motion is on: then only the progress changes the icon. Drawn in code as a template image
+/// like the menu bar icons of the author's other apps: 16 × 16 pt, the glyph in the middle 14 × 14 pt, 1.5 pt lines
+/// with round ends.
 @MainActor
 final class MenuBarIcon: NSObject {
-    /// What the icon shows: the heights of the wave's strokes and the text, being written or finished.
+    /// What the icon shows: where the waves are in their run and the word's line, being written or finished.
     struct Glyph: Equatable {
-        enum Text: Equatable {
+        enum Line: Equatable {
             /// Written so far, 0...1.
             case progress(Double)
             case done
             case failed
         }
 
-        var wave: [CGFloat]
-        var text: Text
+        /// The phase of the waves, in radians.
+        var phase: CGFloat
+        var line: Line
     }
 
     static let defaultsKey = "menuBarIcon"
@@ -83,12 +85,12 @@ final class MenuBarIcon: NSObject {
         refresh()
     }
 
-    /// The finished lines or the cross for 1.5 s, then away.
-    private func finish(_ text: Glyph.Text) {
+    /// The whole line or the cross for 1.5 s, then away.
+    private func finish(_ line: Glyph.Line) {
         timer?.invalidate()
         timer = nil
-        draw(Glyph(wave: Self.restingWave, text: text))
-        item?.button?.toolTip = text == .done ? L("Расшифровка готова") : L("Не получилось")
+        draw(Glyph(phase: Self.restingPhase, line: line))
+        item?.button?.toolTip = line == .done ? L("Расшифровка готова") : L("Не получилось")
         let work = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.hide() } }
         ending = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
@@ -143,9 +145,10 @@ final class MenuBarIcon: NSObject {
     /// The current frame and the tooltip.
     private func refresh() {
         guard let item, ending == nil, transcriber.phase == .working else { return }
-        let written = transcriber.step == .recognizing ? transcriber.stepProgress ?? 0 : 0
-        let wave = moves ? Self.wave(at: Date().timeIntervalSince(clock)) : Self.restingWave
-        draw(Glyph(wave: wave, text: .progress(written)))
+        // Rounded to the 64th, a fraction of a pixel of the line: finer steps would only cost redraws.
+        let written = transcriber.step == .recognizing ? ((transcriber.stepProgress ?? 0) * 64).rounded() / 64 : 0
+        let phase = moves ? Self.phase(at: Date().timeIntervalSince(clock)) : Self.restingPhase
+        draw(Glyph(phase: phase, line: .progress(written)))
         let tooltip = tooltipText()
         if item.button?.toolTip != tooltip {
             item.button?.toolTip = tooltip
@@ -188,42 +191,42 @@ final class MenuBarIcon: NSObject {
 
     nonisolated static let style = Style.wholeIcon
 
-    /// Where the strokes go, in points of the 16 pt canvas (y down). Centres sit on quarter points, so that 1.5 pt
-    /// lines cover whole pixels at 2x.
+    /// Where the mark goes, in points of the 16 pt canvas (y down): the waves from `waveLeft` to `middle`, the line on
+    /// to `lineEnd`, both along `axis`. The axis sits on a quarter point, so that the 1.5 pt line covers whole pixels
+    /// at 2x.
     private struct Layout {
         var outline: Bool
-        var waveX: [CGFloat]
-        /// The height of a stroke at rest of 14 in the mark alone.
-        var waveScale: CGFloat
-        var waveMiddle: CGFloat
-        var lineX: CGFloat
-        var lineY: [CGFloat]
-        var lineLength: [CGFloat]
-        var caret: Bool
+        var waveLeft: CGFloat
+        var middle: CGFloat
+        var lineEnd: CGFloat
+        var axis: CGFloat
+        /// How far the solid wave swings at the left edge; the faint one swings `faint` times as far.
+        var amplitude: CGFloat
+        var faint: CGFloat
+        /// How many waves fit between the left edge and the middle.
+        var cycles: CGFloat
+        /// The side of the cross that takes the line's place when the transcription fails.
+        var cross: CGFloat
 
-        /// Inside the 1.5 pt squircle only two strokes and three short lines fit with room between them.
-        static let wholeIcon = Layout(outline: true, waveX: [4.75, 7.25], waveScale: 9 / 14, waveMiddle: 8.25, lineX: 9.25,
-                                      lineY: [5.25, 8.25, 11.25], lineLength: [3.25, 2.5, 1.75], caret: false)
-        /// The app icon's mark on the whole 14 pt square: three strokes, three lines and the caret.
-        static let markOnly = Layout(outline: false, waveX: [1.75, 4.25, 6.75], waveScale: 1, waveMiddle: 8, lineX: 9,
-                                     lineY: [4.25, 7.75, 11.25], lineLength: [6, 4.5, 2], caret: true)
+        /// Inside the 1.5 pt squircle a single wave fits with room between its strokes, and a faint one behind it.
+        static let wholeIcon = Layout(outline: true, waveLeft: 3.75, middle: 8.25, lineEnd: 12.25, axis: 8.25,
+                                      amplitude: 3.25, faint: 0.8, cycles: 1, cross: 2.75)
+        /// The app icon's mark on the whole 14 pt square: the waves on its left half, the line on the right one.
+        static let markOnly = Layout(outline: false, waveLeft: 1.75, middle: 8, lineEnd: 14.25, axis: 8.25,
+                                     amplitude: 5.25, faint: 0.75, cycles: 1.6, cross: 4)
     }
 
-    nonisolated static let restingWave: [CGFloat] = [8.5, 14, 7]
+    /// At rest the waves lie as the app icon's do: the solid one leaves the axis upwards.
+    nonisolated static let restingPhase = CGFloat.pi
 
-    /// The strokes rise and fall out of step, around their resting heights, once in 2.4 s.
-    nonisolated static func wave(at time: TimeInterval) -> [CGFloat] {
-        let phase = time / 2.4 * 2 * .pi
-        return restingWave.enumerated().map { index, height in
-            let swing: CGFloat = index == 1 ? 2.5 : 2
-            // Quantized to a quarter point, so frames that look the same are not drawn again.
-            return ((height - swing + swing * CGFloat(sin(phase + Double(index) * 2.1))) * 4).rounded() / 4
-        }
+    /// The waves run to the right, into the line, a wavelength in 2.4 s.
+    nonisolated static func phase(at time: TimeInterval) -> CGFloat {
+        restingPhase - CGFloat((time / 2.4).truncatingRemainder(dividingBy: 1)) * 2 * .pi
     }
 
     /// The image on the button: drawn anew whenever the button draws, from `glyph`.
     private final class LiveImage {
-        var glyph = Glyph(wave: MenuBarIcon.restingWave, text: .progress(0))
+        var glyph = Glyph(phase: MenuBarIcon.restingPhase, line: .progress(0))
         lazy var image: NSImage = {
             let image = NSImage(size: NSSize(width: 16, height: 16), flipped: true) { [unowned self] _ in
                 guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
@@ -250,17 +253,15 @@ final class MenuBarIcon: NSObject {
     }
 
     /// Draws a frame on the 16 × 16 pt canvas (y down), the glyph in the middle 14 × 14 pt: 1.5 pt lines with round
-    /// ends, what is not written yet as a faint track.
+    /// ends, the far wave and what is not written yet faint.
     nonisolated static func draw(_ glyph: Glyph, style: Style, in ctx: CGContext) {
         let layout = style == .wholeIcon ? Layout.wholeIcon : Layout.markOnly
-        let width: CGFloat = 1.5
-        ctx.setLineWidth(width)
+        ctx.setLineWidth(1.5)
         ctx.setLineCap(.round)
         ctx.setLineJoin(.round)
-        func stroke(_ from: CGPoint, _ to: CGPoint, alpha: CGFloat = 1) {
+        func stroke(_ points: [CGPoint], alpha: CGFloat = 1) {
             ctx.setStrokeColor(NSColor.black.withAlphaComponent(alpha).cgColor)
-            ctx.move(to: from)
-            ctx.addLine(to: to)
+            ctx.addLines(between: points)
             ctx.strokePath()
         }
         if layout.outline {
@@ -269,40 +270,35 @@ final class MenuBarIcon: NSObject {
             ctx.addPath(squircle(CGRect(x: 1.75, y: 1.75, width: 12.5, height: 12.5)))
             ctx.strokePath()
         }
-        for (index, x) in layout.waveX.enumerated() {
-            let height = min(14, glyph.wave[index]) * layout.waveScale
-            let half = max(0, height - width) / 2
-            stroke(CGPoint(x: x, y: layout.waveMiddle - half), CGPoint(x: x, y: layout.waveMiddle + half))
-        }
-        let x = layout.lineX, lines = zip(layout.lineY, layout.lineLength).map { (y: $0, length: $1) }
-        if glyph.text == .failed {
-            // A cross in the place of the text.
-            let left = x + 0.5, right = x + layout.lineLength[0] - 0.5, top = lines[0].y, bottom = lines[2].y
-            stroke(CGPoint(x: left, y: top), CGPoint(x: right, y: bottom))
-            stroke(CGPoint(x: right, y: top), CGPoint(x: left, y: bottom))
+        // The waves: the far one behind, swinging less and out of step like the second wave of the app icon.
+        stroke(wave(layout, amplitude: layout.amplitude * layout.faint, phase: glyph.phase + 3.6), alpha: 0.45)
+        stroke(wave(layout, amplitude: layout.amplitude, phase: glyph.phase))
+        let y = layout.axis
+        if glyph.line == .failed {
+            // A cross in the place of the line, at its far end, clear of the waves.
+            let right = layout.lineEnd, left = right - layout.cross, top = y - layout.cross / 2, bottom = y + layout.cross / 2
+            stroke([CGPoint(x: left, y: top), CGPoint(x: right, y: bottom)])
+            stroke([CGPoint(x: right, y: top), CGPoint(x: left, y: bottom)])
             return
         }
-        var written: CGFloat
-        switch glyph.text {
+        let written: CGFloat
+        switch glyph.line {
         case .progress(let value): written = CGFloat(min(1, max(0, value)))
         default: written = 1
         }
-        var left = written * layout.lineLength.reduce(0, +)
-        var caret: CGPoint?
-        for (index, line) in lines.enumerated() {
-            stroke(CGPoint(x: x + width / 2, y: line.y), CGPoint(x: x + line.length - width / 2, y: line.y), alpha: 0.3)
-            let part = min(left, line.length)
-            left -= part
-            if part > 0 {
-                stroke(CGPoint(x: x + width / 2, y: line.y), CGPoint(x: x + max(width, part) - width / 2, y: line.y))
-            }
-            // The caret stands where the writing is, after the last line at the end.
-            if caret == nil, part < line.length || index == lines.count - 1 {
-                caret = CGPoint(x: x + part + 1 + width / 2, y: line.y)
-            }
+        stroke([CGPoint(x: layout.middle, y: y), CGPoint(x: layout.lineEnd, y: y)], alpha: 0.3)
+        if written > 0 {
+            stroke([CGPoint(x: layout.middle, y: y), CGPoint(x: layout.middle + (layout.lineEnd - layout.middle) * written, y: y)])
         }
-        if layout.caret, let caret {
-            stroke(CGPoint(x: caret.x, y: caret.y - 1), CGPoint(x: caret.x, y: caret.y + 1))
+    }
+
+    /// A wave like those of the app icon: its swing holds on the left and fades out towards the middle, where the wave
+    /// lies down on the axis and goes on as the line.
+    private nonisolated static func wave(_ layout: Layout, amplitude: CGFloat, phase: CGFloat) -> [CGPoint] {
+        (0...40).map { i in
+            let t = CGFloat(i) / 40
+            return CGPoint(x: layout.waveLeft + (layout.middle - layout.waveLeft) * t,
+                           y: layout.axis + amplitude * pow(cos(.pi / 2 * t), 1.6) * sin(2 * .pi * layout.cycles * t + phase))
         }
     }
 
@@ -327,18 +323,18 @@ final class MenuBarIcon: NSObject {
     var screenFrame: NSRect? { item?.button?.window?.frame }
     var tooltip: String? { item?.button?.toolTip }
 
-    /// The frames as PNG, black on clear, for both styles: a second of the wave at 10 frames a second with the text half
-    /// written, the text at 0, 50 and 100 %, done and failed. Each at 1x, 2x and enlarged 8 times (2x pixels shown 4 times).
+    /// The frames as PNG, black on clear, for both styles: the waves' run at 4 frames a second (as in the menu bar) with
+    /// the line half written, the line at 0, 50 and 100 %, done and failed. Each at 1x and 2x.
     static func saveFrames(to folder: URL) {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        var frames: [(String, Glyph)] = (0..<12).map { i in
-            (String(format: "wave-%02d", i), Glyph(wave: wave(at: Double(i) / 10), text: .progress(0.5)))
+        var frames: [(String, Glyph)] = (0..<10).map { i in
+            (String(format: "wave-%02d", i), Glyph(phase: phase(at: Double(i) / 4), line: .progress(0.5)))
         }
-        frames += [("text-000", Glyph(wave: restingWave, text: .progress(0))),
-                   ("text-050", Glyph(wave: restingWave, text: .progress(0.5))),
-                   ("text-100", Glyph(wave: restingWave, text: .progress(1))),
-                   ("done", Glyph(wave: restingWave, text: .done)),
-                   ("failed", Glyph(wave: restingWave, text: .failed))]
+        frames += [("line-000", Glyph(phase: restingPhase, line: .progress(0))),
+                   ("line-050", Glyph(phase: restingPhase, line: .progress(0.5))),
+                   ("line-100", Glyph(phase: restingPhase, line: .progress(1))),
+                   ("done", Glyph(phase: restingPhase, line: .done)),
+                   ("failed", Glyph(phase: restingPhase, line: .failed))]
         for (prefix, style) in [("A", Style.wholeIcon), ("B", Style.markOnly)] {
             for (name, glyph) in frames {
                 for (suffix, pixels) in [("@1x", 16), ("@2x", 32)] {

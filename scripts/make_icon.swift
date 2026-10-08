@@ -1,9 +1,9 @@
 // Renders the app icon into Resources/AppIcon.icon (the Icon Composer format) and Resources/AppIcon-1024.png
 // Usage: swift scripts/make_icon.swift
 //
-// Speech becoming text: a sound wave of upright pills settles into three lines of text, and a caret after the last
-// line is still typing. Flat and black and white like the icons of the author's other apps: a pure black body and
-// pure white marks of Subline's thickness, with no gradients, glass, glows or shadows.
+// Sound becoming a word: on the left half thin sound waves weave through each other and calm down, meeting in the middle
+// in one point, from which a single straight line goes on to the right. Flat and black and white like the icons of the
+// author's other apps: a pure black body, white lines, the two far waves grey (white at 45 %), no gradients or shadows.
 import AppKit
 
 let bodyColor: (red: CGFloat, green: CGFloat, blue: CGFloat) = (0, 0, 0)
@@ -11,24 +11,44 @@ let bodyColor: (red: CGFloat, green: CGFloat, blue: CGFloat) = (0, 0, 0)
 /// The mark, drawn with the current (white) colours in the flat drawing's coordinates: a 1024 square whose body is the
 /// squircle at 100...924, y growing upwards.
 func drawMark(_ ctx: CGContext) {
-    /// A capsule, upright or lying.
-    func pill(_ rect: CGRect) -> CGPath {
-        let radius = min(rect.width, rect.height) / 2
-        return CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+    // With its round ends the mark spans 196...828, as wide as Subline's; the waves fill the left half up to the
+    // middle, 512.
+    let left: CGFloat = 208, middle: CGFloat = 512, right: CGFloat = 816, axis: CGFloat = 512
+    /// A sine wave whose swing holds on the left and fades smoothly to nothing in the middle, where the wave lies
+    /// down on the axis and becomes the line.
+    func wave(amplitude: CGFloat, cycles: CGFloat, phase: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+        for i in 0...400 {
+            let t = CGFloat(i) / 400
+            let point = CGPoint(x: left + (middle - left) * t,
+                                y: axis + amplitude * pow(cos(.pi / 2 * t), 1.6) * sin(2 * .pi * cycles * t + phase))
+            if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+        }
+        return path
     }
-    // Pills 84 thick like Subline's marks.
-    let thickness: CGFloat = 84
-    // The wave: three upright pills, the loudest in the middle, quieting toward the text.
-    let wave = zip([188, 308, 428] as [CGFloat], [330, 540, 270] as [CGFloat]).map { x, height in
-        CGRect(x: x, y: 512 - height / 2, width: thickness, height: height)
-    }
-    // The text: three lines, the last one short and being typed, with the caret after it.
-    let lines = [CGRect(x: 572, y: 602, width: 264, height: thickness),
-                 CGRect(x: 572, y: 470, width: 196, height: thickness),
-                 CGRect(x: 572, y: 338, width: 100, height: thickness)]
-    let caret = CGRect(x: lines[2].maxX + 40, y: lines[2].midY - 62, width: 44, height: 124)
-    for rect in wave + lines + [caret] { ctx.addPath(pill(rect)) }
-    ctx.fillPath()
+    ctx.saveGState()
+    // Thin lines, about a third of Subline's pills, still a pixel at 32 px.
+    ctx.setLineWidth(24)
+    ctx.setLineCap(.round)
+    ctx.setLineJoin(.round)
+    // The far waves, grey: white at 45 % over the black body.
+    let far = CGMutablePath()
+    far.addPath(wave(amplitude: 140, cycles: 1.8, phase: 1.7))
+    far.addPath(wave(amplitude: 95, cycles: 2.0, phase: 4.6))
+    ctx.setAlpha(0.45)
+    ctx.addPath(far)
+    ctx.strokePath()
+    // The near waves, of slightly different lengths and almost opposite phases so that they cross each other, and
+    // the word's line, white.
+    let near = CGMutablePath()
+    near.addPath(wave(amplitude: 170, cycles: 1.6, phase: 0))
+    near.addPath(wave(amplitude: 120, cycles: 1.9, phase: 3.6))
+    near.move(to: CGPoint(x: middle, y: axis))
+    near.addLine(to: CGPoint(x: right, y: axis))
+    ctx.setAlpha(1)
+    ctx.addPath(near)
+    ctx.strokePath()
+    ctx.restoreGState()
 }
 
 // MARK: - The icon files (the same in every app of the family)

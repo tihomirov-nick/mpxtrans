@@ -10,7 +10,7 @@ unset SDKROOT
 
 APP_NAME="Slovo"
 BUNDLE_ID="${BUNDLE_ID:-com.slovo.app}"
-VERSION="${VERSION:-1.2.0}"
+VERSION="${VERSION:-1.2.1}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 APP="$ROOT/build/$APP_NAME.app"
 VAD_MODEL="ggml-silero-v6.2.0.bin"
