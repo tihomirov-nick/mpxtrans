@@ -456,7 +456,7 @@ final class Transcriber: ObservableObject {
     var languageText: String {
         guard let transcript else { return "" }
         let name = WhisperEngine.languageName(transcript.language)
-        return language == "auto" ? L("%@, определен автоматически", name) : name
+        return language == "auto" ? L("%@, определён автоматически", name) : name
     }
 
     /// Suggested file name without extension, after the recording.

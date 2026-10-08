@@ -23,7 +23,7 @@ struct IdleView: View {
                 ModelTile()
                 LanguageTile()
                 SwitchTile(symbol: "waveform.path.badge.minus", title: L("Пропуск тишины"), isOn: $transcriber.skipSilence,
-                           help: L("Whisper не придумывает фразы там, где никто не говорит. Если пропадают тихие реплики, выключите"))
+                           help: L("Whisper не придумывает фразы там, где никто не говорит. Если пропадают тихие реплики, выключите пропуск тишины"))
                 SwitchTile(symbol: "scope", title: L("Точный режим"), isOn: $transcriber.beamSearch,
                            help: L("Whisper перебирает несколько вариантов каждой фразы: ошибок меньше, но распознавание медленнее"))
             }
@@ -75,7 +75,7 @@ private struct DropCard: View {
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .help(L("MP3, M4A, WAV, MP4, MOV, MKV и любые другие форматы. Распознавание идет на этом Mac, без интернета"))
+        .help(L("MP3, M4A, WAV, MP4, MOV, MKV и любые другие форматы. Распознавание идёт на этом Mac, без интернета"))
         .overlay(alignment: .topTrailing) {
             SettingsButton()
                 .padding(8)

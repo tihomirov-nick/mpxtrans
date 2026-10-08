@@ -41,6 +41,12 @@ HOW TO USE
      • the Share button sends it via AirDrop, Messages, Mail, Notes and more.
 4. At the top, choose the view: "Text" (with paragraphs), "Timecodes"
    (the time of every phrase) or "SRT" (subtitles).
+5. In the second row, choose case and punctuation: "Aa ,.!?" (upper and
+   lower case with punctuation), "Aa" (without punctuation), "aa ,.!?" (all
+   lowercase with punctuation) or "aa" (all lowercase without punctuation).
+   The Transcript menu has the same choice. The variant applies to
+   everything you see, copy, save and share. In timecodes and SRT only the
+   text changes, and you can edit it in any variant.
 
 The tiles under the drop area choose the model and the speech language and
 turn on "Skip Silence" and "Accurate Mode". If the result isn't good enough,
@@ -53,6 +59,27 @@ SETTINGS (⌘, or the gear in the window)
     but runs slower.
   • In "Names and Terms", list words that occur in your recordings
     (names, companies) so that Whisper spells them correctly.
+  • "Sound Effects" are on by default. Slovo plays a short sound when
+    a transcription starts, finishes or fails, when text is copied, saved
+    or shared, when a model is downloaded or deleted and when an update
+    fails to install. The sounds play at the macOS alert volume and stay
+    silent if interface sound effects are off in System Settings, Sound.
+  • "Menu Bar Icon While Working" is on by default too. While
+    a transcription runs, the icon shows its progress, hovering over it
+    shows the percentage and the time left, and a click brings the Slovo
+    window forward.
+
+UPDATES
+Once a day Slovo checks GitHub for a new version. If there is one, a card
+with "Update", "Later" and "Skip" appears above the drop area. "Update"
+downloads the new version, checks its signature, puts it in place of the
+old one and restarts Slovo. Nothing is installed while a transcription
+runs.
+
+To check by hand, choose "Check for Updates…" in the Slovo menu. To turn
+automatic checks off, use the "Check for Updates" switch in Settings. If
+Slovo is started right from the DMG or from Downloads, it can't replace
+itself, and the new version has to be dragged to Applications by hand.
 
 SHORTCUTS
   ⌘O ................ open a file

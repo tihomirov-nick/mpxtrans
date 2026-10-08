@@ -82,7 +82,7 @@ private struct ActionBar: View {
                     Label(L("Вернуть"), systemImage: "arrow.uturn.backward")
                 }
                 .appButton(.link)
-                .help(L("Вернуть исходный текст, правки в этом формате пропадут"))
+                .help(L("Вернуть исходный текст, правки в этом виде пропадут"))
                 .transition(.opacity)
             }
             Spacer(minLength: 8)
