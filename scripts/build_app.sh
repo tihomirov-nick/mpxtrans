@@ -10,13 +10,23 @@ unset SDKROOT
 
 APP_NAME="Slovo"
 BUNDLE_ID="${BUNDLE_ID:-com.slovo.app}"
-VERSION="${VERSION:-1.1.0}"
+VERSION="${VERSION:-1.2.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
-SIGN_IDENTITY="${SIGN_IDENTITY:--}"   # "-" = ad-hoc; or "Developer ID Application: ..."
 APP="$ROOT/build/$APP_NAME.app"
 VAD_MODEL="ggml-silero-v6.2.0.bin"
 COPYRIGHT_EN="© 2026 Nick. Speech recognition: whisper.cpp (MIT), audio: FFmpeg"
 COPYRIGHT_RU="© 2026 Nick. Распознавание речи: whisper.cpp (MIT), звук: FFmpeg"
+# Signature: SIGN_IDENTITY from the environment ("-" is ad-hoc), else the author's own certificate "tihomirov-nick"
+# when it is in the Keychain, else ad-hoc. Installed copies take only updates signed with that certificate. It is
+# self-signed, so find-identity calls it not trusted: that is expected, and only its name is looked for.
+OWN_IDENTITY="tihomirov-nick"
+if [ -z "${SIGN_IDENTITY:-}" ]; then
+    if security find-identity -p codesigning 2>/dev/null | grep -q "\"$OWN_IDENTITY\""; then
+        SIGN_IDENTITY="$OWN_IDENTITY"
+    else
+        SIGN_IDENTITY="-"
+    fi
+fi
 
 # 1. Dependencies
 [ -f Vendor/whisper/lib/libwhisper_all.a ] || ./scripts/build_whisper.sh
@@ -40,12 +50,14 @@ strip -x "$APP/Contents/MacOS/$APP_NAME" 2>/dev/null || true
 cp Vendor/ffmpeg/ffmpeg "$APP/Contents/Helpers/ffmpeg"
 cp "Resources/$VAD_MODEL" "$APP/Contents/Resources/"
 
-# Icon: Liquid Glass icon made in the Icon Composer format (Resources/AppIcon.icon). actool turns it into
-# Assets.car (layered glass icon for macOS 26+, flat images for older systems) and AppIcon.icns.
+# Icon: Resources/AppIcon.icon in the Icon Composer format, made by scripts/make_icon.swift (flat: a solid fill and the
+# white mark, no glass, shadow or translucency). actool turns it into Assets.car, which macOS 26 shows without the grey
+# plate it puts around plain .icns icons, and AppIcon.icns for older systems.
+[ -d Resources/AppIcon.icon ] || swift scripts/make_icon.swift
 xcrun actool "$ROOT/Resources/AppIcon.icon" --compile "$APP/Contents/Resources" \
     --platform macosx --minimum-deployment-target 13.3 --app-icon AppIcon \
     --output-partial-info-plist "$ROOT/build/icon-partial.plist" --output-format human-readable-text >/dev/null
-[ -f "$APP/Contents/Resources/Assets.car" ] || { echo "icon compilation failed"; exit 1; }
+[ -f "$APP/Contents/Resources/Assets.car" ] && [ -f "$APP/Contents/Resources/AppIcon.icns" ] || { echo "icon compilation failed"; exit 1; }
 
 # Interface languages: Russian strings are the keys in the code, English comes from Localizable.strings
 # (scripts/l10n/make_strings.py builds it from scripts/l10n/en.json and stops if a translation is missing).
@@ -135,13 +147,18 @@ plutil -lint "$APP/Contents/Info.plist" >/dev/null
 # 4. Sign (inner code first)
 echo "==> codesign ($SIGN_IDENTITY)"
 xattr -cr "$APP"
-if [ "$SIGN_IDENTITY" = "-" ]; then
-    codesign --force --sign - "$APP/Contents/Helpers/ffmpeg"
-    codesign --force --sign - "$APP"
-else
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP/Contents/Helpers/ffmpeg"
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
-fi
+case "$SIGN_IDENTITY" in
+    "Developer ID Application:"*)
+        # For notarization: hardened runtime and a secure timestamp.
+        codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP/Contents/Helpers/ffmpeg"
+        codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+        ;;
+    *)
+        codesign --force --sign "$SIGN_IDENTITY" "$APP/Contents/Helpers/ffmpeg"
+        codesign --force --sign "$SIGN_IDENTITY" "$APP"
+        ;;
+esac
 codesign --verify --deep --strict "$APP"
+codesign -d -r- "$APP" 2>&1 | sed -n 's/^designated => /    designated requirement: /p'
 echo "==> done: $APP ($(du -sh "$APP" | cut -f1))"
 lipo -info "$APP/Contents/MacOS/$APP_NAME"

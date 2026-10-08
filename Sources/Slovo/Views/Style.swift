@@ -5,10 +5,13 @@ import AppKit
 // surfaces with continuous corners, white text, cards in white 7%, dividers in white 8%, and buttons, switches and
 // tiles drawn by the app rather than by macOS, so they look the same on every macOS version.
 
-/// Slovo's color, taken from the app icon (halfway between its blue and its violet).
+/// Slovo's color: white with a cool tint, as in Subline and the black and white icons of the author's apps. The main
+/// button, switches that are on, progress, the drop zone; what lies on it, text and symbols, is `ink`.
 enum Brand {
-    static let color = Color(red: 0.37, green: 0.38, blue: 0.99)
-    static let nsColor = NSColor(srgbRed: 0.37, green: 0.38, blue: 0.99, alpha: 1)
+    static let color = Color(red: 0.96, green: 0.96, blue: 0.98)
+    static let nsColor = NSColor(srgbRed: 0.96, green: 0.96, blue: 0.98, alpha: 1)
+    /// Text and symbols on the brand color.
+    static let ink = Color.black
 }
 
 /// Shades of white on the black window.
@@ -33,6 +36,25 @@ enum Motion {
     /// With Reduce Motion, movement becomes a short cross-fade.
     static func animation(_ base: Animation, reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeInOut(duration: 0.15) : base
+    }
+
+    /// Opacity that falls and rises once in 1.6 s, played by Core Animation at 10 frames a second; `on` false stops it.
+    static func breathe(_ layer: CALayer?, _ on: Bool, from: Float, to: Float) {
+        guard let layer else { return }
+        guard on else {
+            layer.removeAnimation(forKey: "breath")
+            return
+        }
+        guard layer.animation(forKey: "breath") == nil else { return }
+        let animation = CABasicAnimation(keyPath: "opacity")
+        animation.fromValue = from
+        animation.toValue = to
+        animation.duration = 0.8
+        animation.autoreverses = true
+        animation.repeatCount = .infinity
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        animation.preferredFrameRateRange = CAFrameRateRange(minimum: 8, maximum: 12, preferred: 10)
+        layer.add(animation, forKey: "breath")
     }
 }
 
@@ -151,18 +173,30 @@ struct BlackWindow: NSViewRepresentable {
 
 // MARK: - Small parts
 
-/// SF Symbol animation where the system supports it (macOS 14+).
-struct PulsingSymbol: View {
+/// An SF Symbol that breathes while `active`: its opacity falls and rises once in 1.6 s. Core Animation does it at
+/// 10 frames a second in the render server, so the app does nothing per frame during a long transcription (a
+/// repeating symbol effect kept the CPU busy). Still with Reduce Motion.
+struct PulsingSymbol: NSViewRepresentable {
     let name: String
+    var size: CGFloat
+    var weight: NSFont.Weight = .regular
+    var color: Color
     var active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
-        if #available(macOS 14.0, *) {
-            Image(systemName: name)
-                .symbolEffect(.variableColor.iterative.reversing, options: .repeating, isActive: active)
-        } else {
-            Image(systemName: name)
-        }
+    func makeNSView(context: Context) -> NSImageView {
+        let view = NSImageView()
+        view.wantsLayer = true
+        view.setContentHuggingPriority(.required, for: .horizontal)
+        view.setContentHuggingPriority(.required, for: .vertical)
+        return view
+    }
+
+    func updateNSView(_ view: NSImageView, context: Context) {
+        view.image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: size, weight: weight))
+        view.contentTintColor = NSColor(color)
+        Motion.breathe(view.layer, active && !reduceMotion, from: 1, to: 0.4)
     }
 }
 

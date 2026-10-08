@@ -8,6 +8,9 @@ struct TranscriptTextView: NSViewRepresentable {
     var isEditable: Bool
     /// Keep the end in view as text arrives (unless the user scrolled up to read).
     var followsEnd: Bool
+    /// When it changes, the new text is shown from the top (another format). Other changes, such as another case
+    /// and punctuation variant, keep the place in the text and the cursor.
+    var document: AnyHashable?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -34,7 +37,8 @@ struct TranscriptTextView: NSViewRepresentable {
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 10, height: 12)
         textView.insertionPointColor = .white
-        textView.selectedTextAttributes = [.backgroundColor: Brand.nsColor.withAlphaComponent(0.45)]
+        // The selection is a grey under the white text (the brand white would hide it).
+        textView.selectedTextAttributes = [.backgroundColor: Brand.nsColor.withAlphaComponent(0.28)]
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -61,25 +65,65 @@ struct TranscriptTextView: NSViewRepresentable {
             textView.isEditable = isEditable
             textView.updateDragTypeRegistration()
         }
+        let otherDocument = context.coordinator.document != document
+        context.coordinator.document = document
         let current = textView.string
-        guard current != text else { return }
+        // A letter being composed (an accent, an input method) is left alone until it is done.
+        guard current != text, !textView.hasMarkedText() else { return }
         let wasAtEnd = Self.isScrolledToEnd(scrollView)
         if !current.isEmpty, text.hasPrefix(current) {
             // New phrases: append, so the view does not jump and a selection survives.
             let tail = String(text.dropFirst(current.count))
             textView.textStorage?.append(NSAttributedString(string: tail, attributes: Self.attributes))
-        } else {
+        } else if otherDocument {
             textView.textStorage?.setAttributedString(NSAttributedString(string: text, attributes: Self.attributes))
-            // Undo steps refer to the old text.
-            textView.undoManager?.removeAllActions(withTarget: textView.textStorage as Any)
-            textView.undoManager?.removeAllActions(withTarget: textView)
+            Self.forgetUndo(textView)
             textView.scroll(.zero)
+        } else {
+            Self.replaceChanges(in: textView, with: text)
         }
         if followsEnd && wasAtEnd {
             textView.scrollToEndOfDocument(nil)
             // Once more after the layout pass that the new text triggers.
             DispatchQueue.main.async { textView.scrollToEndOfDocument(nil) }
         }
+    }
+
+    /// Replaces only the part that differs (the capitals and marks of another variant, a typed letter the variant
+    /// changes), so the place in the text and the cursor stay.
+    static func replaceChanges(in textView: NSTextView, with text: String) {
+        guard let storage = textView.textStorage, let clipView = textView.enclosingScrollView?.contentView else { return }
+        let old = Array(storage.string.utf16), new = Array(text.utf16)
+        var prefix = 0
+        while prefix < old.count, prefix < new.count, old[prefix] == new[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < old.count - prefix, suffix < new.count - prefix,
+              old[old.count - 1 - suffix] == new[new.count - 1 - suffix] { suffix += 1 }
+        // Not between the two halves of an emoji.
+        if prefix > 0, prefix < old.count, UTF16.isTrailSurrogate(old[prefix]) { prefix -= 1 }
+        if suffix > 0, UTF16.isTrailSurrogate(old[old.count - suffix]) { suffix -= 1 }
+        let changed = NSRange(location: prefix, length: old.count - prefix - suffix)
+        let replacement = String(decoding: new[prefix..<(new.count - suffix)], as: UTF16.self)
+        let insertedLength = new.count - prefix - suffix
+        func moved(_ position: Int) -> Int {
+            if position <= changed.location { return position }
+            if position >= changed.upperBound { return position + insertedLength - changed.length }
+            return changed.location + min(position - changed.location, insertedLength)
+        }
+        let selection = textView.selectedRange()
+        let origin = clipView.bounds.origin
+        storage.replaceCharacters(in: changed, with: NSAttributedString(string: replacement, attributes: attributes))
+        let start = moved(selection.location)
+        textView.setSelectedRange(NSRange(location: start, length: max(0, moved(selection.upperBound) - start)))
+        clipView.scroll(to: origin)
+        textView.enclosingScrollView?.reflectScrolledClipView(clipView)
+        forgetUndo(textView)
+    }
+
+    /// Undo steps refer to the old text.
+    private static func forgetUndo(_ textView: NSTextView) {
+        textView.undoManager?.removeAllActions(withTarget: textView.textStorage as Any)
+        textView.undoManager?.removeAllActions(withTarget: textView)
     }
 
     static func isScrolledToEnd(_ scrollView: NSScrollView) -> Bool {
@@ -101,14 +145,22 @@ struct TranscriptTextView: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: TranscriptTextView
+        var document: AnyHashable?
 
         init(_ parent: TranscriptTextView) {
             self.parent = parent
+            document = parent.document
         }
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+            // The text may come back changed by the case and punctuation variant ("А" typed in lowercase): show it
+            // right away, before the next key.
+            let shown = parent.text
+            if shown != textView.string, !textView.hasMarkedText() {
+                TranscriptTextView.replaceChanges(in: textView, with: shown)
+            }
         }
     }
 }

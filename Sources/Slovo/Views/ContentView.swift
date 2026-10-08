@@ -39,9 +39,7 @@ struct ContentView: View {
         .blackWindow()
         .animation(Motion.animation(Motion.spring, reduceMotion: reduceMotion), value: transcriber.phase)
         .animation(Motion.animation(Motion.quick, reduceMotion: reduceMotion), value: dropTargeted)
-        .onDrop(of: [.fileURL], isTargeted: $dragTargeted) { providers in
-            handleDrop(providers)
-        }
+        .onDrop(of: [.fileURL], delegate: FileDrop(transcriber: transcriber, isTargeted: $dragTargeted))
         .alert(L("Не получилось"), isPresented: Binding(
             get: { transcriber.errorMessage != nil },
             set: { if !$0 { transcriber.errorMessage = nil } }
@@ -68,10 +66,33 @@ struct ContentView: View {
         }
     }
 
-    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }) else {
-            return false
-        }
+}
+
+/// A file dragged onto the window. While an update is being installed it is refused, and macOS shows the usual
+/// refusal: a "not allowed" pointer and the file sliding back.
+private struct FileDrop: DropDelegate {
+    let transcriber: Transcriber
+    @Binding var isTargeted: Bool
+
+    func validateDrop(info: DropInfo) -> Bool {
+        !transcriber.isUpdating && info.hasItemsConforming(to: [.fileURL])
+    }
+
+    func dropEntered(info: DropInfo) {
+        isTargeted = validateDrop(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: validateDrop(info: info) ? .copy : .forbidden)
+    }
+
+    func dropExited(info: DropInfo) {
+        isTargeted = false
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        isTargeted = false
+        guard validateDrop(info: info), let provider = info.itemProviders(for: [.fileURL]).first else { return false }
         let transcriber = self.transcriber
         _ = provider.loadObject(ofClass: URL.self) { url, _ in
             guard let url else { return }
@@ -91,6 +112,7 @@ private struct DropOverlay: View {
                 .strokeBorder(Brand.color, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
             Label(L("Отпустите, чтобы распознать"), systemImage: "waveform")
                 .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Brand.ink)
                 .lineLimit(1)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

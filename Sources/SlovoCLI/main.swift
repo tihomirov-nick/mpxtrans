@@ -3,6 +3,7 @@ import TransCore
 
 // Command line tool for checking recognition without the UI:
 //   slovo-cli <file> [--model <id or path>] [--lang ru|en|auto|…] [--format text|timecodes|srt]
+//                [--case original|originalNoPunctuation|lowercase|lowercaseNoPunctuation]
 //                [--no-vad] [--greedy] [--prompt "names, terms"] [--quiet]
 // The transcript goes to stdout; progress and live phrases go to stderr.
 
@@ -31,12 +32,13 @@ func flag(_ name: String) -> Bool {
 let modelArgument = option("--model")
 let language = option("--lang") ?? "ru"
 let format = TranscriptFormat(rawValue: option("--format") ?? "text") ?? .text
+let caseMode = TextCaseMode(rawValue: option("--case") ?? "original") ?? .original
 let prompt = option("--prompt") ?? ""
 let useVAD = !flag("--no-vad")
 let greedy = flag("--greedy")
 let quiet = flag("--quiet")
 guard let path = arguments.first else {
-    fail("usage: slovo-cli <file> [--model <id or path>] [--lang ru] [--format text|timecodes|srt] [--no-vad] [--greedy] [--prompt …]")
+    fail("usage: slovo-cli <file> [--model <id or path>] [--lang ru] [--format text|timecodes|srt] [--case lowercase|…] [--no-vad] [--greedy] [--prompt …]")
 }
 
 let modelPath: String = {
@@ -88,7 +90,7 @@ Task.detached {
         let elapsed = Date().timeIntervalSince(recognitionStart)
         log(String(format: "recognized in %.2f s (%.1fx realtime) · language: %@ · segments: %d",
                    elapsed, Double(samples.count) / 16000 / max(elapsed, 0.001), result.language, result.segments.count))
-        print(format.render(result.segments))
+        print(format.apply(caseMode, to: format.render(result.segments)))
     } catch {
         log("error: \(error.localizedDescription)")
         exit(1)

@@ -58,8 +58,22 @@ final class Transcriber: ObservableObject {
     @Published var format: TranscriptFormat {
         didSet {
             defaults.set(format.rawValue, forKey: "format")
-            if phase == .working { liveText = format.render(segments) }
+            if phase == .working { renderLiveText() }
         }
+    }
+    /// Case and punctuation of the text in every format.
+    @Published var caseMode: TextCaseMode {
+        didSet {
+            defaults.set(caseMode.rawValue, forKey: "caseMode")
+            if phase == .working { renderLiveText() }
+        }
+    }
+    @Published var soundEffects: Bool { didSet { defaults.set(soundEffects, forKey: SoundEffects.defaultsKey) } }
+    @Published var menuBarIcon: Bool { didSet { defaults.set(menuBarIcon, forKey: MenuBarIcon.defaultsKey) } }
+    /// A new version is put in place of this one and Slovo is about to restart: no transcription starts meanwhile.
+    /// A file opened from the Dock or with "Open With" then waits: it opens when the update fails, or after the restart.
+    @Published var isUpdating = false {
+        didSet { if oldValue, !isUpdating { openFileLeftForUpdate() } }
     }
 
     // MARK: Job
@@ -71,18 +85,23 @@ final class Transcriber: ObservableObject {
     /// Progress of the current step (extracting or recognizing), nil while it cannot be measured.
     @Published private(set) var stepProgress: Double?
     @Published private(set) var recognitionStartedAt: Date?
-    /// Text recognized so far, in the chosen format.
+    /// Text recognized so far, in the chosen format and variant.
     @Published private(set) var liveText = ""
     @Published private(set) var transcript: Transcript?
     /// Time from dropping the file to the result.
     @Published private(set) var elapsed: TimeInterval = 0
-    /// Text of each format as shown; the user may edit it.
+    /// Text of each format with the user's edits, before the case and punctuation variant: the variant is applied
+    /// on top of it (`shownText`), so switching variants loses neither the edits nor the capitals and marks.
     @Published var texts: [TranscriptFormat: String] = [:]
-    @Published var errorMessage: String?
+    @Published var errorMessage: String? {
+        didSet { if errorMessage != nil { SoundEffects.play(.failure) } }
+    }
     /// The models window should open (a view does it: only views can open windows).
     @Published var modelManagerRequested = false
 
     private var originals: [TranscriptFormat: String] = [:]
+    /// The last shown text of each format: SwiftUI asks for it several times per change.
+    private var shownCache: [TranscriptFormat: (text: String, mode: TextCaseMode, shown: String)] = [:]
     private var segments: [TranscriptSegment] = []
     private var jobID = UUID()
     private var job: Task<Void, Never>?
@@ -106,6 +125,9 @@ final class Transcriber: ObservableObject {
         skipSilence = defaults.object(forKey: "skipSilence") as? Bool ?? true
         beamSearch = defaults.object(forKey: "beamSearch") as? Bool ?? true
         format = TranscriptFormat(rawValue: defaults.string(forKey: "format") ?? "") ?? .text
+        caseMode = TextCaseMode(rawValue: defaults.string(forKey: "caseMode") ?? "") ?? .original
+        soundEffects = defaults.object(forKey: SoundEffects.defaultsKey) as? Bool ?? true
+        menuBarIcon = defaults.object(forKey: MenuBarIcon.defaultsKey) as? Bool ?? true
 
         modelStore.onInstalled = { [weak self] id in
             self?.modelInstalled(id)
@@ -134,6 +156,9 @@ final class Transcriber: ObservableObject {
         if let url = pendingURL {
             pendingURL = nil
             open(url)
+        } else {
+            // A waiting file starts right away and sounds as started instead.
+            SoundEffects.play(.success)
         }
     }
 
@@ -158,6 +183,10 @@ final class Transcriber: ObservableObject {
 
     /// Starts recognition of a file (a running job is cancelled).
     func open(_ url: URL) {
+        guard !isUpdating else {
+            defaults.set(url.path, forKey: Self.fileLeftForUpdate)
+            return
+        }
         modelStore.refresh()
         ensureValidModelSelection()
         guard let modelURL = selectedModelURL else {
@@ -175,6 +204,7 @@ final class Transcriber: ObservableObject {
         liveText = ""
         texts = [:]
         originals = [:]
+        shownCache = [:]
         step = .opening
         stepProgress = nil
         recognitionStartedAt = nil
@@ -199,6 +229,8 @@ final class Transcriber: ObservableObject {
             guard info.hasAudio else { throw MediaError.noAudio }
             step = .extracting
             stepProgress = 0
+            // Once the file is known to have sound: a file that cannot be read sounds only as a failure.
+            SoundEffects.play(.start)
 
             let flag = CancelFlag()
             let worker = Task.detached(priority: .userInitiated) { [weak self] () throws -> (segments: [TranscriptSegment], language: String) in
@@ -259,7 +291,11 @@ final class Transcriber: ObservableObject {
     private func addSegment(_ segment: TranscriptSegment, job: UUID) {
         guard job == jobID, phase == .working else { return }
         segments.append(segment)
-        liveText = format.render(segments)
+        renderLiveText()
+    }
+
+    private func renderLiveText() {
+        liveText = format.apply(caseMode, to: format.render(segments))
     }
 
     private func finish(_ result: (segments: [TranscriptSegment], language: String), info: MediaInfo, modelName: String,
@@ -281,6 +317,7 @@ final class Transcriber: ObservableObject {
         }
         texts = originals
         phase = .done
+        SoundEffects.play(.success)
         if !NSApp.isActive {
             NSApp.requestUserAttention(.informationalRequest)
         }
@@ -307,6 +344,28 @@ final class Transcriber: ObservableObject {
         liveText = ""
         texts = [:]
         originals = [:]
+        shownCache = [:]
+    }
+
+    private static let fileLeftForUpdate = "openAfterUpdate"
+
+    /// A file that came while an update was being installed (see `isUpdating`).
+    func openFileLeftForUpdate() {
+        guard let path = defaults.string(forKey: Self.fileLeftForUpdate) else { return }
+        defaults.removeObject(forKey: Self.fileLeftForUpdate)
+        if FileManager.default.fileExists(atPath: path) { open(URL(fileURLWithPath: path)) }
+    }
+
+    /// For checks (DebugHooks): the window as during a long preparation, with nothing running.
+    func simulateWork(file: URL) {
+        cancelJob()
+        fileURL = file
+        media = nil
+        segments = []
+        liveText = ""
+        step = .preparingGPU
+        stepProgress = nil
+        phase = .working
     }
 
     /// The same file again with the current model and language.
@@ -363,7 +422,21 @@ final class Transcriber: ObservableObject {
 
     /// What is shown, copied, saved and shared.
     var currentText: String {
-        phase == .done ? texts[format] ?? "" : liveText
+        phase == .done ? shownText(format) : liveText
+    }
+
+    /// The text of a format in the chosen case and punctuation variant.
+    func shownText(_ format: TranscriptFormat) -> String {
+        let text = texts[format] ?? ""
+        if let cached = shownCache[format], cached.mode == caseMode, cached.text == text { return cached.shown }
+        let shown = format.apply(caseMode, to: text)
+        shownCache[format] = (text, caseMode, shown)
+        return shown
+    }
+
+    /// An edit of the shown text: it goes into the text under the variant (see `TextTransformer.merge`).
+    func editShownText(_ edited: String) {
+        texts[format] = format.merge(edited, into: texts[format] ?? "", mode: caseMode)
     }
 
     var isEdited: Bool {
@@ -375,7 +448,7 @@ final class Transcriber: ObservableObject {
     }
 
     var wordCountText: String {
-        let count = wordCount(phase == .done ? texts[.text] ?? "" : segments.map(\.text).joined(separator: " "))
+        let count = wordCount(phase == .done ? shownText(.text) : segments.map(\.text).joined(separator: " "))
         return pluralize(count, "слово", "слова", "слов", en: "word", "words")
     }
 
@@ -394,6 +467,7 @@ final class Transcriber: ObservableObject {
     func copyText(to pasteboard: NSPasteboard = .general) {
         pasteboard.clearContents()
         pasteboard.setString(currentText, forType: .string)
+        SoundEffects.play(.tick)
     }
 
     func save(completion: @escaping (Bool) -> Void = { _ in }) {
@@ -421,6 +495,7 @@ final class Transcriber: ObservableObject {
     func write(to url: URL) -> Bool {
         do {
             try currentText.write(to: url, atomically: true, encoding: .utf8)
+            SoundEffects.play(.send)
             return true
         } catch {
             errorMessage = L("Не удалось сохранить файл: %@", error.localizedDescription)

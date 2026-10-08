@@ -29,23 +29,29 @@ struct ResultView: View {
             .animation(Motion.animation(Motion.spring, reduceMotion: reduceMotion), value: showRerun)
 
             VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    Segments(selection: $transcriber.format, options: TranscriptFormat.allCases.map { ($0, $0.title) })
+                HStack(alignment: .top, spacing: 8) {
+                    // What the result is, and its case and punctuation (as in Subline's style).
+                    VStack(alignment: .leading, spacing: 6) {
+                        Segments(selection: $transcriber.format, options: TranscriptFormat.allCases.map { ($0, $0.title) })
+                        Segments(selection: $transcriber.caseMode, options: TextCaseMode.allCases.map { ($0, $0.shortTitle) },
+                                 help: \.title)
+                    }
                     Spacer(minLength: 8)
                     Text(transcriber.wordCountText)
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(Palette.secondaryText)
                         .lineLimit(1)
+                        .frame(height: 28)
                         .help(L("Готово за %@", formatDuration(transcriber.elapsed)))
                 }
                 .padding(.leading, 8)
                 .padding(.trailing, 12)
-                .frame(height: 44)
+                .padding(.vertical, 8)
                 RowDivider(leading: 0)
                 TranscriptTextView(text: Binding(
-                    get: { transcriber.texts[transcriber.format] ?? "" },
-                    set: { transcriber.texts[transcriber.format] = $0 }
-                ), isEditable: true, followsEnd: false)
+                    get: { transcriber.shownText(transcriber.format) },
+                    set: { transcriber.editShownText($0) }
+                ), isEditable: true, followsEnd: false, document: transcriber.format)
             }
             .card()
             .clipShape(RoundedRectangle(cornerRadius: Layout.cardRadius, style: .continuous))

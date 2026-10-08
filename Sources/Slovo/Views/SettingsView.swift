@@ -2,7 +2,8 @@ import SwiftUI
 import AppKit
 import TransCore
 
-/// Settings (⌘,): every recognition option, one short row each, and the names and terms for Whisper.
+/// Settings (⌘,): every recognition option, one short row each, the names and terms for Whisper, then the sounds,
+/// the menu bar icon and updates.
 struct SettingsView: View {
     @EnvironmentObject var transcriber: Transcriber
     @EnvironmentObject var modelStore: ModelStore
@@ -40,6 +41,19 @@ struct SettingsView: View {
             .padding(12)
             .card()
             .help(L("Слова, которые встречаются в записях: Whisper будет писать их правильно"))
+
+            VStack(spacing: 0) {
+                SettingRow(title: L("Звуковые эффекты"),
+                           help: L("Короткие звуки: распознавание началось, закончилось или не удалось, текст скопирован, сохранен или отправлен, модель скачана или удалена, обновление не установилось. Громкость та же, что у звуков предупреждений, и звуков нет, если выключены звуковые эффекты интерфейса (Системные настройки, раздел «Звук»)")) {
+                    Switch(isOn: $transcriber.soundEffects)
+                }
+                SettingRow(title: L("Значок в строке меню во время работы"),
+                           help: L("Пока идет расшифровка, значок в строке меню показывает ее ход. Щелчок по нему открывает окно Slovo")) {
+                    Switch(isOn: $transcriber.menuBarIcon)
+                }
+                UpdateSettingRows()
+            }
+            .card()
 
             HStack {
                 Button(L("Модели распознавания…")) { openWindow(id: "models") }

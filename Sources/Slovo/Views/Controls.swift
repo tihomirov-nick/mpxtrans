@@ -27,7 +27,8 @@ struct PressStyle: ButtonStyle {
 
 // MARK: - Switch
 
-/// A switch as on iPhone: the brand color when on, the knob stretches while pressed and slides with a spring.
+/// A switch as on iPhone: the brand color with a black knob when on, the knob stretches while pressed and slides with
+/// a spring.
 struct Switch: View {
     @Binding var isOn: Bool
 
@@ -52,7 +53,7 @@ struct Switch: View {
                 .frame(width: 36, height: 21)
                 .overlay(alignment: isOn ? .trailing : .leading) {
                     Capsule()
-                        .fill(.white)
+                        .fill(isOn ? Brand.ink : .white)
                         .frame(width: pressed ? 22 : 17, height: 17)
                         .padding(2)
                         .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
@@ -66,10 +67,12 @@ struct Switch: View {
 
 // MARK: - Segments
 
-/// A choice drawn by the app: the white pill slides to the chosen option.
+/// A choice drawn by the app: the white pill slides to the chosen option. `help` tells what an option with a short
+/// title means, when pointed at and to VoiceOver.
 struct Segments<Value: Hashable>: View {
     @Binding var selection: Value
     let options: [(Value, String)]
+    var help: ((Value) -> String)?
     @Namespace private var pill
 
     var body: some View {
@@ -95,6 +98,8 @@ struct Segments<Value: Hashable>: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(PressStyle())
+                .help(help?(value) ?? "")
+                .accessibilityLabel(help?(value) ?? title)
                 .accessibilityAddTraits(selection == value ? .isSelected : [])
             }
         }
@@ -143,7 +148,7 @@ struct IconButton: View {
 // MARK: - Tiles
 
 /// A tile as in Control Center: a wide pill with an icon circle and a one-line name. A switch tile turns the circle
-/// to the brand color, bounces the icon, spreads a ring and taps the trackpad when it changes; a menu tile shows
+/// to the brand color (the icon black), bounces the icon, spreads a ring and taps the trackpad when it changes; a menu tile shows
 /// the current value with a chevron and opens a menu.
 private struct TileFace: View {
     let symbol: String
@@ -159,7 +164,7 @@ private struct TileFace: View {
         HStack(spacing: 8) {
             Image(systemName: symbol)
                 .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(on ? Brand.ink : .white)
                 .bounce(on: on)
                 .frame(width: 28, height: 28)
                 .background(Circle().fill(on ? Brand.color : Color.white.opacity(0.16)))
@@ -308,9 +313,11 @@ struct MenuCapsule: View {
 
 // MARK: - Progress
 
-/// A thin capsule filling with the brand color; without a value a short piece slides back and forth.
+/// A thin capsule filling with the brand color; without a value it breathes (see `Motion.breathe`: a piece sliding at
+/// the display's rate kept the CPU busy), and with Reduce Motion it is half lit.
 struct ProgressBar: View {
     var value: Double?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { proxy in
@@ -321,20 +328,30 @@ struct ProgressBar: View {
                         .fill(Brand.color)
                         .frame(width: max(6, proxy.size.width * min(1, max(0, value))))
                 } else {
-                    TimelineView(.animation) { context in
-                        let width = proxy.size.width * 0.3
-                        let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.6) / 1.6
-                        let position = (1 - cos(phase * 2 * .pi)) / 2
-                        Capsule()
-                            .fill(Brand.color)
-                            .frame(width: width)
-                            .offset(x: (proxy.size.width - width) * position)
-                    }
+                    BreathingBar(breathes: !reduceMotion)
                 }
             }
         }
         .frame(height: 6)
         .animation(.easeOut(duration: 0.3), value: value)
+    }
+}
+
+/// The capsule of a progress bar without a value, breathing in Core Animation.
+private struct BreathingBar: NSViewRepresentable {
+    let breathes: Bool
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        view.layer?.backgroundColor = Brand.nsColor.cgColor
+        view.layer?.cornerRadius = 3
+        view.layer?.opacity = 0.5
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        Motion.breathe(view.layer, breathes, from: 0.75, to: 0.15)
     }
 }
 

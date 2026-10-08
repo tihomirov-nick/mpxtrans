@@ -23,8 +23,8 @@ struct ShareButton: View {
     }
 }
 
-/// Shows the share menu at an AppKit view and fills in the subject for Mail.
-final class SharingAnchor: NSObject, NSSharingServicePickerDelegate {
+/// Shows the share menu at an AppKit view, fills in the subject for Mail and sounds once the text is sent.
+final class SharingAnchor: NSObject, NSSharingServicePickerDelegate, NSSharingServiceDelegate {
     let anchor = ViewAnchor()
     private var subject = ""
 
@@ -38,5 +38,30 @@ final class SharingAnchor: NSObject, NSSharingServicePickerDelegate {
 
     func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, didChoose service: NSSharingService?) {
         service?.subject = subject
+    }
+
+    /// The anchor follows the chosen service to hear when it has sent the text.
+    func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker,
+                              delegateFor sharingService: NSSharingService) -> NSSharingServiceDelegate? {
+        self
+    }
+
+    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
+        onMain { SoundEffects.play(.send) }
+    }
+
+    // A service shows its window (Messages, AirDrop) at the share button, where the menu was.
+
+    func sharingService(_ sharingService: NSSharingService, sourceWindowForShareItems items: [Any],
+                        sharingContentScope: UnsafeMutablePointer<NSSharingService.SharingContentScope>) -> NSWindow? {
+        anchor.view?.window
+    }
+
+    func anchoringView(for sharingService: NSSharingService, showRelativeTo positioningRect: UnsafeMutablePointer<NSRect>,
+                       preferredEdge: UnsafeMutablePointer<NSRectEdge>) -> NSView? {
+        guard let view = anchor.view else { return nil }
+        positioningRect.pointee = view.bounds
+        preferredEdge.pointee = .minY
+        return view
     }
 }

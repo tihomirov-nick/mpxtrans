@@ -18,7 +18,9 @@ final class ModelStore: NSObject, ObservableObject {
     @Published private(set) var downloads: [String: DownloadState] = [:]
     @Published private(set) var installed: Set<String> = []
     @Published private(set) var customModels: [URL] = []
-    @Published var lastError: String?
+    @Published var lastError: String? {
+        didSet { if lastError != nil { SoundEffects.play(.failure) } }
+    }
 
     /// Called when a model becomes available (catalog id or "custom:<file name>").
     var onInstalled: ((String) -> Void)?
@@ -84,6 +86,7 @@ final class ModelStore: NSObject, ObservableObject {
         attempts[model.id] = 0
         downloads[model.id] = DownloadState(received: 0, total: model.sizeBytes)
         startTask(model.id, resumeData: nil)
+        SoundEffects.play(.start)
     }
 
     private func startTask(_ id: String, resumeData: Data?) {
@@ -120,12 +123,15 @@ final class ModelStore: NSObject, ObservableObject {
     }
 
     func delete(_ model: WhisperModelInfo) {
-        try? FileManager.default.removeItem(at: model.localURL)
-        refresh()
+        deleteFile(model.localURL)
     }
 
     func deleteCustom(_ url: URL) {
-        try? FileManager.default.removeItem(at: url)
+        deleteFile(url)
+    }
+
+    private func deleteFile(_ url: URL) {
+        if (try? FileManager.default.removeItem(at: url)) != nil { SoundEffects.play(.delete) }
         refresh()
     }
 

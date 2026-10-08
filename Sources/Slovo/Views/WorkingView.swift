@@ -20,11 +20,10 @@ struct WorkingView: View {
             .card()
 
             ZStack {
-                TranscriptTextView(text: .constant(transcriber.liveText), isEditable: false, followsEnd: true)
+                TranscriptTextView(text: .constant(transcriber.liveText), isEditable: false, followsEnd: true,
+                                   document: transcriber.format)
                 if transcriber.liveText.isEmpty {
-                    PulsingSymbol(name: "waveform", active: true)
-                        .font(.system(size: 26, weight: .regular))
-                        .foregroundStyle(Palette.tertiaryText)
+                    PulsingSymbol(name: "waveform", size: 26, color: Palette.tertiaryText, active: true)
                         .allowsHitTesting(false)
                 }
             }

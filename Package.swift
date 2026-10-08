@@ -45,5 +45,11 @@ let package = Package(
             dependencies: ["TransCore"],
             path: "Sources/SlovoCLI"
         ),
+        // Unit tests of the core (swift test)
+        .testTarget(
+            name: "TransCoreTests",
+            dependencies: ["TransCore"],
+            path: "Tests/TransCoreTests"
+        ),
     ]
 )

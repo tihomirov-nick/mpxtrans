@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Capsule buttons drawn by the app, as in FaceID: the main action is filled with the brand color, the others are
-/// translucent white. They sink when pressed, spring back with a little bounce and grow a bit under the pointer.
+/// Capsule buttons drawn by the app, as in FaceID: the main action is filled with the brand color (white, the title
+/// black), the others are translucent white. They sink when pressed, spring back with a little bounce and grow a bit
+/// under the pointer.
 struct AppButtonStyle: ButtonStyle {
     enum Kind {
         /// The main action: a filled capsule in the brand color.
@@ -10,7 +11,8 @@ struct AppButtonStyle: ButtonStyle {
         case secondary
         /// Deleting: a red-tinted capsule.
         case destructive
-        /// A word in the brand color without a capsule, like the actions in iPhone Settings.
+        /// An underlined word without a capsule, like the actions in iPhone Settings: white like the text around it, so
+        /// the line tells it apart.
         case link
     }
 
@@ -33,6 +35,7 @@ private struct AppButtonBody: View {
         let pressed = configuration.isPressed
         configuration.label
             .font(.system(size: fontSize, weight: kind == .primary ? .semibold : .medium))
+            .underline(isLink)
             .foregroundStyle(foreground)
             .lineLimit(1)
             .padding(.horizontal, isLink ? 0 : padding.h)
@@ -74,7 +77,8 @@ private struct AppButtonBody: View {
 
     private var foreground: Color {
         switch kind {
-        case .primary, .secondary: .white
+        case .primary: Brand.ink
+        case .secondary: .white
         case .destructive: .red
         case .link: Brand.color
         }
