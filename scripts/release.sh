@@ -5,7 +5,7 @@
 #   VERSION=1.2.0 NOTES=~/notes-1.2.0.md ./scripts/release.sh     (keep the notes file outside the repo)
 # git goes through the remote's deploy key (git@github-mpxtrans:..., see ~/.ssh/config). The release API needs a
 # fine-grained token of tihomirov-nick with Contents: Read and write on this repo, kept in the Keychain
-# (account tihomirov-nick, service TOKEN_SERVICE; by default github-slovo-token, then github-mpxtrans-token).
+# (account tihomirov-nick, service TOKEN_SERVICE; by default github-slovo-token).
 # gh's own login is a different account and is not used. Without such a token the script stops before the build.
 # The app must be signed with the self-signed certificate "tihomirov-nick" from the login Keychain: installed copies
 # accept only updates signed with it, so without it the script stops too.
@@ -20,7 +20,7 @@ NOTES="$(cd "$(dirname "$NOTES")" && pwd)/$(basename "$NOTES")"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 REPO="tihomirov-nick/slovo"
-SERVICES="${TOKEN_SERVICE:-github-slovo-token github-mpxtrans-token}"
+SERVICES="${TOKEN_SERVICE:-github-slovo-token}"
 IDENTITY="tihomirov-nick"
 TAG="v$VERSION"
 DMG="dist/Slovo-$VERSION.dmg"

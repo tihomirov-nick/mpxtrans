@@ -6,3 +6,5 @@ Vendor/downloads/
 Vendor/ffmpeg/
 *.dmg
 .DS_Store
+# Promo materials (images, video, post): made locally, not part of the app
+promo/
