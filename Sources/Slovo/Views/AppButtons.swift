@@ -9,8 +9,6 @@ struct AppButtonStyle: ButtonStyle {
         case primary
         /// Everything else: a translucent capsule.
         case secondary
-        /// Deleting: a red-tinted capsule.
-        case destructive
         /// An underlined word without a capsule, like the actions in iPhone Settings: white like the text around it, so
         /// the line tells it apart.
         case link
@@ -79,7 +77,6 @@ private struct AppButtonBody: View {
         switch kind {
         case .primary: Brand.ink
         case .secondary: .white
-        case .destructive: .red
         case .link: Brand.color
         }
     }
@@ -90,8 +87,6 @@ private struct AppButtonBody: View {
             return Brand.color.opacity(pressed ? 0.75 : (hovering ? 0.92 : 1))
         case .secondary:
             return Color.white.opacity(pressed ? 0.24 : (hovering ? 0.2 : 0.14))
-        case .destructive:
-            return Color.red.opacity(pressed ? 0.26 : (hovering ? 0.2 : 0.14))
         case .link:
             return .clear
         }

@@ -7,10 +7,9 @@ enum LegacySettings {
     static let currentID = "com.slovo.app"
 
     static func migrate() {
-        let env = ProcessInfo.processInfo.environment
-        // Tests point to a copy: a test build with its own id must not take the real MPXTrans settings away.
-        let old = env["SLOVO_LEGACY_DOMAIN"] ?? "com.mpxtrans.app"
-        guard let id = Bundle.main.bundleIdentifier, id == currentID || env["SLOVO_LEGACY_DOMAIN"] != nil else { return }
+        // A build with another id (BUNDLE_ID in build_app.sh) must not take the real MPXTrans settings away.
+        let old = "com.mpxtrans.app"
+        guard let id = Bundle.main.bundleIdentifier, id == currentID else { return }
         let defaults = UserDefaults.standard
         guard let domain = defaults.persistentDomain(forName: old) else { return }
         for key in ["modelID", "language", "prompt", "skipSilence", "beamSearch", "format"] where defaults.object(forKey: key) == nil {

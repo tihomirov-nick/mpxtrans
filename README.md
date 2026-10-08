@@ -207,8 +207,6 @@ macOS и доступ к Связке ключей переживают обно
 - Иконка лежит пакетом Icon Composer в `Resources/AppIcon.icon`. Пакет рисует `scripts/make_icon.swift`, а `actool`
   при сборке превращает его в `Assets.car` и запасной `AppIcon.icns` для macOS до 26-й версии. Иконку, которая есть
   только в `.icns`, macOS 26 показывает внутри серой подложки.
-- Вариант значка в строке меню без контура, одним знаком на весь значок, включается значением `.markOnly`
-  в `MenuBarIcon.style`.
 - В `Sources/SlovoCLI` лежит консольная утилита, в `Tests/TransCoreTests` лежат тесты.
 - Модели хранятся в `~/Library/Application Support/Subline/Models/`, это общая папка с Subline. Subline 2.0 при
   первом запуске переносит туда старую папку `Subtits` и оставляет на её месте ссылку, а на Mac со старым Subtits

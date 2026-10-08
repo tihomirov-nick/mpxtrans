@@ -51,7 +51,6 @@ enum SoundEffects {
     @MainActor
     static func play(_ event: Event) {
         guard UserDefaults.standard.object(forKey: defaultsKey) as? Bool ?? true else { return }
-        DebugHooks.State.shared.sounds.append("\(event)")
         // Reading a sound from disk the first time must not hold up the window.
         queue.async {
             if let id = soundID(for: event) { AudioServicesPlaySystemSound(id) }

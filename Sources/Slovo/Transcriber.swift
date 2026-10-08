@@ -356,18 +356,6 @@ final class Transcriber: ObservableObject {
         if FileManager.default.fileExists(atPath: path) { open(URL(fileURLWithPath: path)) }
     }
 
-    /// For checks (DebugHooks): the window as during a long preparation, with nothing running.
-    func simulateWork(file: URL) {
-        cancelJob()
-        fileURL = file
-        media = nil
-        segments = []
-        liveText = ""
-        step = .preparingGPU
-        stepProgress = nil
-        phase = .working
-    }
-
     /// The same file again with the current model and language.
     func retranscribe() {
         guard let url = fileURL, phase != .working else { return }

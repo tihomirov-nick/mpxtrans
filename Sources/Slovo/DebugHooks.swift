@@ -10,8 +10,6 @@ import TransCore
 @MainActor
 enum DebugHooks {
     static weak var transcriber: Transcriber?
-    static weak var updater: Updater?
-    static weak var menuBarIcon: MenuBarIcon?
 
     /// Simulated drag over the window (a real drag cannot be scripted), and the panel for another pass.
     final class State: ObservableObject {
@@ -22,8 +20,6 @@ enum DebugHooks {
         @Published var openWindow: String?
         /// What the "copy" action copied.
         var copiedText = ""
-        /// Sound effects played since launch.
-        var sounds: [String] = []
     }
 
     nonisolated static func install() {
@@ -96,49 +92,6 @@ enum DebugHooks {
             pasteboard.releaseGlobally()
         case "save": transcriber.write(to: URL(fileURLWithPath: value))
         case "edit": transcriber.texts[transcriber.format, default: ""] += value
-        case "case":
-            if let mode = TextCaseMode(rawValue: value) { transcriber.caseMode = mode }
-        case "select":
-            // select=<location>,<length> in the transcript, in UTF-16 units; select=end puts the cursor at the end
-            let numbers = value.split(separator: ",").compactMap { Int($0) }
-            if let textView = transcriptTextView() {
-                let length = (textView.string as NSString).length
-                let location = value == "end" ? length : min(numbers.first ?? 0, length)
-                textView.setSelectedRange(NSRange(location: location, length: min(numbers.count > 1 ? numbers[1] : 0, length - location)))
-            }
-        case "type":
-            // Typed into the transcript at the selection, the way the keyboard types
-            transcriptTextView()?.insertText(value, replacementRange: NSRange(location: NSNotFound, length: 0))
-        case "undo": transcriptTextView()?.undoManager?.undo()
-        case "revert": transcriber.revertEdits()
-        case "scroll":
-            // scroll=<y> of the transcript, in points
-            if let clipView = transcriptTextView()?.enclosingScrollView?.contentView, let y = Double(value) {
-                clipView.scroll(to: NSPoint(x: 0, y: y))
-                clipView.enclosingScrollView?.reflectScrolledClipView(clipView)
-            }
-        case "download":
-            if let model = ModelCatalog.model(id: value) { transcriber.modelStore.download(model) }
-        case "cancel-download": transcriber.modelStore.cancelDownload(value)
-        case "delete-model": transcriber.modelStore.deleteCustom(AppPaths.modelsDir.appendingPathComponent(value))
-        case "update-check": updater?.check(userInitiated: value != "auto")
-        case "update-install": updater?.install()
-        case "update-skip": updater?.skip()
-        case "update-later": updater?.dismiss()
-        case "update-cancel": updater?.cancel()
-        case "menu":
-            // menu=<title>: chooses the item of the app menu or the File menu, as a click does
-            for menu in NSApp.mainMenu?.items.prefix(2).compactMap(\.submenu) ?? [] {
-                menu.delegate?.menuNeedsUpdate?(menu)
-                if let index = menu.items.firstIndex(where: { $0.title == value }) { menu.performActionForItem(at: index) }
-            }
-        case "simulate-work": transcriber.simulateWork(file: URL(fileURLWithPath: value))
-        case "updating":
-            // updating=1|0: as while an update is installed (files wait, opening is off)
-            transcriber.isUpdating = value == "1"
-        case "menubar-frames":
-            // menubar-frames=<folder>: the glyph's frames as PNG, 16 pt at 2x and enlarged 8x
-            MenuBarIcon.saveFrames(to: URL(fileURLWithPath: value))
         case "target": State.shared.dropTargeted = value != "0"
         case "rerun-panel": State.shared.rerunPanel = value != "0"
         case "activate":
@@ -160,49 +113,15 @@ enum DebugHooks {
                 "modelID": transcriber.modelID,
                 "language": transcriber.language,
                 "format": transcriber.format.rawValue,
-                "caseMode": transcriber.caseMode.rawValue,
                 "text": transcriber.currentText,
-                "shownInView": transcriptTextView()?.string ?? "",
-                "selection": transcriptTextView().map { NSStringFromRange($0.selectedRange()) } ?? "",
-                "scroll": transcriptTextView()?.enclosingScrollView.map { $0.contentView.bounds.origin.y } ?? -1,
-                "source": transcriber.texts[transcriber.format] ?? "",
-                "edited": transcriber.isEdited,
                 "words": transcriber.wordCountText,
                 "copied": State.shared.copiedText,
-                "sounds": State.shared.sounds,
-                "update": updater.map { "\($0.state)" } ?? "",
-                "version": updater?.currentVersion ?? "",
-                "menuBarIcon": menuBarIcon?.screenFrame.map { NSStringFromRect($0) } ?? "",
-                "menuBarTooltip": menuBarIcon?.tooltip ?? "",
-                "menus": (NSApp.mainMenu?.items.prefix(2).compactMap(\.submenu) ?? []).flatMap { menu -> [String] in
-                    // As when the menu opens: SwiftUI brings the items up to date then.
-                    menu.delegate?.menuNeedsUpdate?(menu)
-                    menu.update()
-                    return menu.items.filter { !$0.isSeparatorItem }.map { "\($0.title)=\($0.isEnabled)" }
-                },
-                "updating": transcriber.isUpdating,
-                "fileLeftForUpdate": UserDefaults.standard.string(forKey: "openAfterUpdate") ?? "",
                 "windows": NSApp.windows.filter(\.isVisible).map { ["id": $0.windowNumber, "title": $0.title, "frame": "\($0.frame)"] },
             ]
-            if JSONSerialization.isValidJSONObject(info),
-               let data = try? JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys]) {
+            if let data = try? JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: URL(fileURLWithPath: value))
-            } else {
-                try? "\(info)".write(toFile: value + ".txt", atomically: true, encoding: .utf8)
             }
         default: break
         }
-    }
-
-    /// The editable text of the result in the main window.
-    private static func transcriptTextView() -> NSTextView? {
-        func find(in view: NSView) -> NSTextView? {
-            if let textView = view as? NSTextView, textView.isEditable { return textView }
-            for subview in view.subviews {
-                if let found = find(in: subview) { return found }
-            }
-            return nil
-        }
-        return NSApp.windows.filter(\.isVisible).lazy.compactMap { $0.contentView.flatMap(find) }.first
     }
 }

@@ -26,7 +26,6 @@ struct SlovoApp: App {
                 .onAppear {
                     appDelegate.attach(transcriber)
                     DebugHooks.transcriber = transcriber
-                    DebugHooks.updater = updater
                     updater.start()
                 }
                 // An update is installed from the drop zone only: a transcription started meanwhile stops its download,
@@ -146,7 +145,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.transcriber = transcriber
         if menuBarIcon == nil {
             menuBarIcon = MenuBarIcon(transcriber: transcriber)
-            DebugHooks.menuBarIcon = menuBarIcon
         }
         if let url = pendingURL {
             pendingURL = nil
