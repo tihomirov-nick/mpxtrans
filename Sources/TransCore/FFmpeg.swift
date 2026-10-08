@@ -9,13 +9,13 @@ public enum MediaError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .ffmpegNotFound: return L("Не найден встроенный ffmpeg. Переустановите приложение.")
+        case .ffmpegNotFound: return L("Не найден встроенный ffmpeg. Переустановите приложение")
         case .unreadable(let details):
-            let text = L("Не удалось открыть файл как аудио или видео.")
+            let text = L("Не удалось открыть файл как аудио или видео")
             return details.isEmpty ? text : text + "\n" + details
-        case .noAudio: return L("В файле нет звуковой дорожки, распознавать нечего.")
+        case .noAudio: return L("В файле нет звуковой дорожки, распознавать нечего")
         case .failed(let details): return L("Ошибка ffmpeg:\n%@", "\(details)")
-        case .cancelled: return L("Отменено.")
+        case .cancelled: return L("Отменено")
         }
     }
 }

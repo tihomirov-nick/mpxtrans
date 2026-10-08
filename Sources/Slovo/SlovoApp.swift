@@ -3,20 +3,21 @@ import AppKit
 import TransCore
 
 @main
-struct MPXTransApp: App {
+struct SlovoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var transcriber = Transcriber()
 
     init() {
+        LegacySettings.migrate()
         Localization.apply()
     }
 
     var body: some Scene {
-        Window("MPXTrans", id: "main") {
+        Window("Slovo", id: "main") {
             ContentView()
                 .environmentObject(transcriber)
                 .environmentObject(transcriber.modelStore)
-                .frame(minWidth: 400, minHeight: 470)
+                .frame(minWidth: 400, minHeight: 440)
                 .onAppear {
                     appDelegate.attach(transcriber)
                     DebugHooks.transcriber = transcriber
@@ -35,14 +36,20 @@ struct MPXTransApp: App {
                 .environmentObject(transcriber.modelStore)
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 600, height: 640)
+        .defaultSize(width: 560, height: 425)
         .windowResizability(.contentMinSize)
 
-        Settings {
+        // A window of its own rather than the Settings scene, and sized by default rather than to its content:
+        // on macOS 26 a window sized to its content (the Settings window is one) gets its content above the title
+        // bar, which hides the window buttons.
+        Window(L("Настройки"), id: "settings") {
             SettingsView()
                 .environmentObject(transcriber)
                 .environmentObject(transcriber.modelStore)
         }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 400, height: 324)
+        .windowResizability(.contentMinSize)
     }
 }
 
@@ -51,6 +58,10 @@ struct AppCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button(L("Настройки…")) { openWindow(id: "settings") }
+                .keyboardShortcut(",", modifiers: .command)
+        }
         CommandGroup(replacing: .newItem) {
             Button(L("Открыть файл…")) { transcriber.showOpenPanel() }
                 .keyboardShortcut("o", modifiers: .command)
@@ -117,6 +128,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
+    }
+
+    /// A running job is cancelled first. whisper.cpp keeps its GPU buffers until the job returns, and ggml aborts
+    /// when the process exits before that (it frees its Metal devices on exit), so the app quits once the job stops.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        MainActor.assumeIsolated { transcriber?.cancel() }
+        guard WhisperEngine.isBusy else { return .terminateNow }
+        DispatchQueue.global(qos: .userInitiated).async {
+            WhisperEngine.waitUntilIdle(timeout: 10)
+            // While it waits for the reply, AppKit runs the main run loop in the modal panel mode, where blocks
+            // sent to the main queue do not run.
+            RunLoop.main.perform(inModes: [.default, .modalPanel]) {
+                MainActor.assumeIsolated { NSApp.reply(toApplicationShouldTerminate: true) }
+            }
+            CFRunLoopWakeUp(CFRunLoopGetMain())
+        }
+        return .terminateLater
+    }
+
+    /// Slovo is black in the light theme as well, like FaceID's island; menus, alerts and panels follow.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSApp.appearance = NSAppearance(named: .darkAqua)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

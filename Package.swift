@@ -6,11 +6,11 @@ import Foundation
 let packageRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 
 let package = Package(
-    name: "MPXTrans",
+    name: "Slovo",
     platforms: [.macOS("13.3")],
     products: [
-        .executable(name: "MPXTrans", targets: ["MPXTrans"]),
-        .executable(name: "mpxtrans-cli", targets: ["MPXTransCLI"]),
+        .executable(name: "Slovo", targets: ["Slovo"]),
+        .executable(name: "slovo-cli", targets: ["SlovoCLI"]),
     ],
     targets: [
         // whisper.cpp (built by scripts/build_whisper.sh as a universal static library)
@@ -35,15 +35,15 @@ let package = Package(
         ),
         // SwiftUI application
         .executableTarget(
-            name: "MPXTrans",
+            name: "Slovo",
             dependencies: ["TransCore"],
-            path: "Sources/MPXTrans"
+            path: "Sources/Slovo"
         ),
         // Command line tool for testing recognition without the UI
         .executableTarget(
-            name: "MPXTransCLI",
+            name: "SlovoCLI",
             dependencies: ["TransCore"],
-            path: "Sources/MPXTransCLI"
+            path: "Sources/SlovoCLI"
         ),
     ]
 )

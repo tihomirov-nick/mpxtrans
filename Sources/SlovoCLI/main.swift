@@ -2,7 +2,7 @@ import Foundation
 import TransCore
 
 // Command line tool for checking recognition without the UI:
-//   mpxtrans-cli <file> [--model <id or path>] [--lang ru|en|auto|…] [--format text|timecodes|srt]
+//   slovo-cli <file> [--model <id or path>] [--lang ru|en|auto|…] [--format text|timecodes|srt]
 //                [--no-vad] [--greedy] [--prompt "names, terms"] [--quiet]
 // The transcript goes to stdout; progress and live phrases go to stderr.
 
@@ -36,7 +36,7 @@ let useVAD = !flag("--no-vad")
 let greedy = flag("--greedy")
 let quiet = flag("--quiet")
 guard let path = arguments.first else {
-    fail("usage: mpxtrans-cli <file> [--model <id or path>] [--lang ru] [--format text|timecodes|srt] [--no-vad] [--greedy] [--prompt …]")
+    fail("usage: slovo-cli <file> [--model <id or path>] [--lang ru] [--format text|timecodes|srt] [--no-vad] [--greedy] [--prompt …]")
 }
 
 let modelPath: String = {
@@ -50,7 +50,7 @@ let modelPath: String = {
     return installed.localURL.path
 }()
 
-WhisperEngine.setLoggingEnabled(ProcessInfo.processInfo.environment["MPXTRANS_WHISPER_LOG"] != nil)
+WhisperEngine.setLoggingEnabled(ProcessInfo.processInfo.environment["SLOVO_WHISPER_LOG"] != nil)
 let url = URL(fileURLWithPath: path)
 let started = Date()
 let done = DispatchSemaphore(value: 0)

@@ -2,7 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 import TransCore
 
-/// The small window: drop zone → progress with live text → transcript with copy, save and share.
+/// The small window: drop zone and settings tiles, then progress with live text, then the transcript with copy,
+/// save and share. Each stage replaces the previous one out of a blur.
 struct ContentView: View {
     @EnvironmentObject var transcriber: Transcriber
     @EnvironmentObject var modelStore: ModelStore
@@ -18,27 +19,25 @@ struct ContentView: View {
             switch transcriber.phase {
             case .idle:
                 IdleView(isTargeted: dropTargeted)
-                    .transition(phaseTransition)
+                    .transition(.blurAppear(reduceMotion: reduceMotion))
             case .working:
                 WorkingView()
-                    .transition(phaseTransition)
+                    .transition(.blurAppear(reduceMotion: reduceMotion))
             case .done:
                 ResultView()
-                    .transition(phaseTransition)
+                    .transition(.blurAppear(reduceMotion: reduceMotion))
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 14)
-        .padding(.top, 4)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Backdrop())
+        .padding([.horizontal, .bottom], Layout.padding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .overlay {
             if dropTargeted && transcriber.phase != .idle {
                 DropOverlay()
                     .transition(.opacity)
             }
         }
-        .animation(Motion.animation(Motion.standard, reduceMotion: reduceMotion), value: transcriber.phase)
+        .blackWindow()
+        .animation(Motion.animation(Motion.spring, reduceMotion: reduceMotion), value: transcriber.phase)
         .animation(Motion.animation(Motion.quick, reduceMotion: reduceMotion), value: dropTargeted)
         .onDrop(of: [.fileURL], isTargeted: $dragTargeted) { providers in
             handleDrop(providers)
@@ -56,16 +55,17 @@ struct ContentView: View {
             transcriber.modelManagerRequested = false
             openWindow(id: "models")
         }
+        .onChange(of: debug.openWindow) { id in
+            guard let id else { return }
+            debug.openWindow = nil
+            openWindow(id: id)
+        }
         .onChange(of: modelStore.installed) { _ in
             transcriber.ensureValidModelSelection()
         }
         .onAppear {
             if !modelStore.hasAnyModel { openWindow(id: "models") }
         }
-    }
-
-    private var phaseTransition: AnyTransition {
-        reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97))
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
@@ -85,23 +85,24 @@ struct ContentView: View {
 private struct DropOverlay: View {
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.accentColor.opacity(0.08))
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .strokeBorder(Color.accentColor.opacity(0.8), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.black.opacity(0.72))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Brand.color, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
             Label(L("Отпустите, чтобы распознать"), systemImage: "waveform")
-                .font(.system(size: 15, weight: .semibold))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .glassSurface(in: Capsule())
+                .font(.system(size: 14, weight: .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Capsule().fill(Brand.color))
         }
         .padding(8)
         .allowsHitTesting(false)
     }
 }
 
-/// File icon, name and details in a glass capsule; buttons on the right.
-struct FileHeader<Trailing: View>: View {
+/// The file: its icon, name and details on one line each, buttons on the right.
+struct FileRow<Trailing: View>: View {
     let url: URL
     let subtitle: String
     @ViewBuilder var trailing: Trailing
@@ -119,15 +120,15 @@ struct FileHeader<Trailing: View>: View {
                     .truncationMode(.middle)
                 Text(subtitle)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.secondaryText)
                     .lineLimit(1)
+                    .help(subtitle)
             }
-            Spacer(minLength: 4)
-            trailing
+            Spacer(minLength: 6)
+            HStack(spacing: 6) { trailing }
         }
-        .padding(.leading, 12)
-        .padding(.trailing, 8)
-        .padding(.vertical, 7)
-        .glassSurface(in: Capsule())
+        .padding(.leading, 10)
+        .padding(.trailing, 10)
+        .frame(height: 52)
     }
 }

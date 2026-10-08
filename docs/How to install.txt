@@ -1,9 +1,12 @@
-MPXTRANS
-========
+SLOVO
+=====
 
 INSTALLING
-1. Drag the MPXTrans icon onto the Applications folder next to it.
-2. Open the Applications folder in Finder and launch MPXTrans.
+1. Drag the Slovo icon onto the Applications folder next to it.
+2. Open the Applications folder in Finder and launch Slovo.
+
+If MPXTrans (the earlier name of Slovo) is on this Mac, Slovo takes over its
+settings on the first launch, and MPXTrans can be deleted.
 
 IF macOS WON'T OPEN THE APP
 The app isn't notarized by Apple, so on the first launch macOS may show
@@ -12,17 +15,17 @@ of malware"). You only need to allow it once.
 
   • On macOS 15 and later, close the warning with "Done", open System
     Settings, go to Privacy & Security, scroll down, click "Open Anyway"
-    next to MPXTrans and confirm.
+    next to Slovo and confirm.
 
-  • On macOS 13–14, right-click MPXTrans in Finder, choose "Open", then
+  • On macOS 13–14, right-click Slovo in Finder, choose "Open", then
     click "Open" again in the warning.
 
   • If that didn't help, open Terminal and run:
-        xattr -dr com.apple.quarantine /Applications/MPXTrans.app
+        xattr -dr com.apple.quarantine /Applications/Slovo.app
 
 FIRST LAUNCH
-If Subtits with downloaded models is already on this Mac, MPXTrans uses them
-right away: both apps share the models folder. If there are no models, the
+If Subline (formerly Subtits) with downloaded models is already on this Mac,
+Slovo uses them right away: both apps share the models folder. If there are no models, the
 "Recognition Models" window opens. Click "Download" next to Whisper Large v3
 Turbo (about 870 MB). The model is downloaded once, after that everything
 works offline.
@@ -39,16 +42,16 @@ HOW TO USE
 4. At the top, choose the view: "Text" (with paragraphs), "Timecodes"
    (the time of every phrase) or "SRT" (subtitles).
 
-The model and the speech language are chosen at the bottom of the window.
-If the result isn't good enough, click ↻ above the text and transcribe
-the file again with another model.
+The tiles under the drop area choose the model and the speech language and
+turn on "Skip Silence" and "Accurate Mode". If the result isn't good enough,
+click ↻ above the text, choose another model and click "Transcribe".
 
-SETTINGS (⌘,)
-  • "Skip silence and music" is on by default. With it, Whisper doesn't
-    make up phrases where nobody speaks.
-  • "Accurate mode" is on by default too. It makes fewer mistakes
+SETTINGS (⌘, or the gear in the window)
+  • "Skip Silence" is on by default. With it, Whisper doesn't make up
+    phrases where nobody speaks.
+  • "Accurate Mode" is on by default too. It makes fewer mistakes
     but runs slower.
-  • In "Names and terms", list words that occur in your recordings
+  • In "Names and Terms", list words that occur in your recordings
     (names, companies) so that Whisper spells them correctly.
 
 SHORTCUTS
@@ -61,7 +64,12 @@ SHORTCUTS
   ⌘N ................ new transcription
   ⌘F ................ find in the text
 
+INTERFACE LANGUAGE
+Slovo speaks the main language of macOS, English or Russian. To choose
+a language for Slovo only, open System Settings, General, Language & Region,
+and add Slovo to the Applications list.
+
 REQUIREMENTS
-macOS 13.3 or later. MPXTrans is fastest on Macs with Apple Silicon (M1 and
+macOS 13.3 or later. Slovo is fastest on Macs with Apple Silicon (M1 and
 later), where an hour of audio takes a few minutes. On Intel Macs recognition
 runs on the CPU and is noticeably slower.

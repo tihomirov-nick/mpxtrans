@@ -2,7 +2,7 @@ import Foundation
 import CryptoKit
 import TransCore
 
-/// Downloads, verifies and deletes Whisper models (in the folder shared with Subtits).
+/// Downloads, verifies and deletes Whisper models (in the folder shared with Subline).
 @MainActor
 final class ModelStore: NSObject, ObservableObject {
     struct DownloadState: Equatable {
@@ -38,7 +38,7 @@ final class ModelStore: NSObject, ObservableObject {
         refresh()
     }
 
-    /// Re-reads the models folder (another app, Subtits, may have added or removed models).
+    /// Re-reads the models folder (another app, Subline, may have added or removed models).
     func refresh() {
         installed = Set(ModelCatalog.models.filter(\.isDownloaded).map(\.id))
         customModels = ModelCatalog.customModelFiles()
@@ -61,6 +61,14 @@ final class ModelStore: NSObject, ObservableObject {
             return URL(fileURLWithPath: String(id.dropFirst("custom:".count))).deletingPathExtension().lastPathComponent
         }
         return ModelCatalog.model(id: id)?.name ?? id
+    }
+
+    /// A name that fits a tile: "Turbo" for "Whisper Large v3 Turbo", "Russian Podlodka" for "Whisper Large v3 Russian
+    /// Podlodka" (every catalog model is a Whisper model, most of them Large v3); "Large v3" stays as it is.
+    func shortName(of name: String) -> String {
+        var short = name.hasPrefix("Whisper ") ? String(name.dropFirst("Whisper ".count)) : name
+        if short.hasPrefix("Large v3 ") { short = String(short.dropFirst("Large v3 ".count)) }
+        return short
     }
 
     /// Installed models in catalog order, then custom files.
@@ -189,7 +197,7 @@ final class ModelStore: NSObject, ObservableObject {
             await MainActor.run {
                 self.downloads[id] = nil
                 if let problem = failure {
-                    self.lastError = L("Модель «%@» скачалась с ошибкой: %@. Попробуйте ещё раз.", "\(model.name)", "\(problem)")
+                    self.lastError = L("Модель «%@» скачалась с ошибкой: %@. Попробуйте еще раз", "\(model.name)", "\(problem)")
                 }
                 self.refresh()
                 if failure == nil { self.onInstalled?(id) }

@@ -32,7 +32,9 @@ struct TranscriptTextView: NSViewRepresentable {
         textView.isAutomaticTextReplacementEnabled = false
         textView.isContinuousSpellCheckingEnabled = false
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 16)
+        textView.textContainerInset = NSSize(width: 10, height: 12)
+        textView.insertionPointColor = .white
+        textView.selectedTextAttributes = [.backgroundColor: Brand.nsColor.withAlphaComponent(0.45)]
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -92,7 +94,7 @@ struct TranscriptTextView: NSViewRepresentable {
         paragraph.paragraphSpacing = 2
         return [
             .font: NSFont.systemFont(ofSize: 14),
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: NSColor.white.withAlphaComponent(0.92),
             .paragraphStyle: paragraph,
         ]
     }()

@@ -36,10 +36,10 @@ public enum WhisperError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .modelNotFound(let path): return L("Файл модели не найден: %@", "\(path)")
-        case .modelLoadFailed(let name): return L("Не удалось загрузить модель «%@». Возможно, файл повреждён: удалите модель и скачайте её заново.", "\(name)")
-        case .failed(let code): return L("Ошибка распознавания (код %@).", "\(code)")
-        case .cancelled: return L("Распознавание отменено.")
-        case .emptyAudio: return L("Звуковая дорожка пустая.")
+        case .modelLoadFailed(let name): return L("Не удалось загрузить модель «%@». Возможно, файл поврежден: удалите модель и скачайте ее заново", "\(name)")
+        case .failed(let code): return L("Ошибка распознавания (код %@)", "\(code)")
+        case .cancelled: return L("Распознавание отменено")
+        case .emptyAudio: return L("Звуковая дорожка пустая")
         }
     }
 }
@@ -153,6 +153,28 @@ public enum WhisperEngine {
 
     /// One recognition at a time: a job that is being cancelled finishes before the next one loads its model.
     private static let runLock = NSLock()
+
+    /// True while a recognition or the GPU warm-up holds whisper.cpp's Metal resources.
+    public static var isBusy: Bool {
+        guard runLock.try() else { return true }
+        runLock.unlock()
+        return isWarmingUp
+    }
+
+    /// Waits at most `timeout` seconds until a cancelled recognition and the GPU warm-up have let go of the GPU.
+    /// ggml frees its Metal devices when the process exits and aborts if a context still holds GPU buffers then,
+    /// so the app calls this before quitting. Returns false when the time ran out.
+    @discardableResult
+    public static func waitUntilIdle(timeout: TimeInterval) -> Bool {
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        guard runLock.lock(before: deadline) else { return false }
+        runLock.unlock()
+        while isWarmingUp {
+            guard Date() < deadline else { return false }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return true
+    }
 
     /// Runs recognition on 16 kHz mono samples. Blocking — call from a background thread.
     /// `onSegment` receives phrases as soon as they are recognized (already filtered).

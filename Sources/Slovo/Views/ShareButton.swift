@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import TransCore
 
-/// Opens the standard macOS share menu (AirDrop, Messages, Mail, Notes, …) under the button.
+/// Opens the standard macOS share menu (AirDrop, Messages, Mail, Notes, …) under a round button.
 struct ShareButton: View {
     /// Text to share, read at the moment of the click.
     let text: () -> String
@@ -14,11 +14,10 @@ struct ShareButton: View {
         Button {
             anchor.share(text(), subject: subject)
         } label: {
-            Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 14, weight: .medium))
-                .frame(width: 20, height: 20)
+            RoundIcon(symbol: "square.and.arrow.up", size: 30)
+                .background(AnchorView(anchor: anchor.anchor))
         }
-        .background(AnchorView(anchor: anchor.anchor))
+        .buttonStyle(PressStyle())
         .help(L("Поделиться"))
         .accessibilityLabel(L("Поделиться"))
     }
@@ -39,24 +38,5 @@ final class SharingAnchor: NSObject, NSSharingServicePickerDelegate {
 
     func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, didChoose service: NSSharingService?) {
         service?.subject = subject
-    }
-}
-
-/// Weak reference to an AppKit view placed behind a SwiftUI control (to attach menus to it).
-final class ViewAnchor {
-    weak var view: NSView?
-}
-
-struct AnchorView: NSViewRepresentable {
-    let anchor: ViewAnchor
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        anchor.view = view
-        return view
-    }
-
-    func updateNSView(_ view: NSView, context: Context) {
-        anchor.view = view
     }
 }

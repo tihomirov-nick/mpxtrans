@@ -117,6 +117,8 @@ final class Transcriber: ObservableObject {
 
     var selectedModelURL: URL? { modelStore.modelURL(for: modelID) }
     var modelName: String { modelStore.displayName(for: modelID) }
+    /// The model's name as it fits a tile ("Turbo (легкая)").
+    var shortModelName: String { modelStore.shortName(of: modelName) }
 
     /// Keeps a model that exists on disk selected; standard Whisper Turbo is preferred.
     func ensureValidModelSelection() {
@@ -268,8 +270,8 @@ final class Transcriber: ObservableObject {
             phase = .idle
             fileURL = nil
             errorMessage = skippedSilence
-                ? L("Речь не найдена. Проверьте язык распознавания или выключите «Пропускать тишину и музыку» в настройках.")
-                : L("Речь не найдена. Проверьте язык распознавания или попробуйте другую модель.")
+                ? L("Речь не найдена. Проверьте язык распознавания или выключите «Пропуск тишины»")
+                : L("Речь не найдена. Проверьте язык распознавания или попробуйте другую модель")
             return
         }
         segments = result.segments
@@ -381,7 +383,7 @@ final class Transcriber: ObservableObject {
     var languageText: String {
         guard let transcript else { return "" }
         let name = WhisperEngine.languageName(transcript.language)
-        return language == "auto" ? L("%@, определён автоматически", name) : name
+        return language == "auto" ? L("%@, определен автоматически", name) : name
     }
 
     /// Suggested file name without extension, after the recording.
@@ -389,8 +391,7 @@ final class Transcriber: ObservableObject {
         fileURL?.deletingPathExtension().lastPathComponent ?? L("Расшифровка")
     }
 
-    func copyText() {
-        let pasteboard = NSPasteboard.general
+    func copyText(to pasteboard: NSPasteboard = .general) {
         pasteboard.clearContents()
         pasteboard.setString(currentText, forType: .string)
     }

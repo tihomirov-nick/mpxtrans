@@ -1,6 +1,6 @@
 #!/bin/bash
-# Builds build/MPXTrans.app (universal: Apple Silicon + Intel).
-#   VERSION=1.0.0 ./scripts/build_app.sh
+# Builds build/Slovo.app (universal: Apple Silicon + Intel).
+#   VERSION=1.1.0 ./scripts/build_app.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -8,13 +8,15 @@ cd "$ROOT"
 # A Command Line Tools SDK set in the environment may not match the Xcode compiler.
 unset SDKROOT
 
-APP_NAME="MPXTrans"
-BUNDLE_ID="${BUNDLE_ID:-com.mpxtrans.app}"
-VERSION="${VERSION:-1.0.0}"
+APP_NAME="Slovo"
+BUNDLE_ID="${BUNDLE_ID:-com.slovo.app}"
+VERSION="${VERSION:-1.1.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"   # "-" = ad-hoc; or "Developer ID Application: ..."
 APP="$ROOT/build/$APP_NAME.app"
 VAD_MODEL="ggml-silero-v6.2.0.bin"
+COPYRIGHT_EN="© 2026 Nick. Speech recognition: whisper.cpp (MIT), audio: FFmpeg"
+COPYRIGHT_RU="© 2026 Nick. Распознавание речи: whisper.cpp (MIT), звук: FFmpeg"
 
 # 1. Dependencies
 [ -f Vendor/whisper/lib/libwhisper_all.a ] || ./scripts/build_whisper.sh
@@ -52,7 +54,7 @@ cp Resources/en.lproj/Localizable.strings "$APP/Contents/Resources/en.lproj/"
 cat > "$APP/Contents/Resources/en.lproj/InfoPlist.strings" <<STRINGS
 CFBundleDisplayName = "$APP_NAME";
 CFBundleName = "$APP_NAME";
-NSHumanReadableCopyright = "MPXTrans — speech to text. Recognition: whisper.cpp (MIT), audio: FFmpeg.";
+NSHumanReadableCopyright = "$COPYRIGHT_EN";
 "Audio" = "Audio";
 "Video" = "Video";
 "Media (other formats)" = "Media (other formats)";
@@ -60,7 +62,7 @@ STRINGS
 cat > "$APP/Contents/Resources/ru.lproj/InfoPlist.strings" <<STRINGS
 CFBundleDisplayName = "$APP_NAME";
 CFBundleName = "$APP_NAME";
-NSHumanReadableCopyright = "MPXTrans — расшифровка речи. Распознавание: whisper.cpp (MIT), звук: FFmpeg.";
+NSHumanReadableCopyright = "$COPYRIGHT_RU";
 "Audio" = "Аудио";
 "Video" = "Видео";
 "Media (other formats)" = "Аудио и видео (другие форматы)";
@@ -88,7 +90,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
-    <key>NSHumanReadableCopyright</key><string>MPXTrans — speech to text. Recognition: whisper.cpp (MIT), audio: FFmpeg.</string>
+    <key>NSHumanReadableCopyright</key><string>$COPYRIGHT_EN</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

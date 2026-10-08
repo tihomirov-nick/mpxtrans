@@ -2,16 +2,27 @@ import Foundation
 
 /// File system locations used by the app.
 public enum AppPaths {
-    public static let appName = "MPXTrans"
+    public static let appName = "Slovo"
 
-    /// Whisper models are shared with Subtits (~/Library/Application Support/Subtits/Models): a model downloaded
-    /// in either app is available in both. `MPXTRANS_MODELS_DIR` points to another folder (for tests).
+    /// Whisper models are shared with Subline (formerly Subtits): a model downloaded in either app is available in
+    /// both. Subline 2.0 moves ~/Library/Application Support/Subtits to Subline and leaves a link under the old name,
+    /// so Subline/Models comes first and Subtits/Models (a Mac with an older Subtits) second; a new folder goes under
+    /// Subline. `SLOVO_MODELS_DIR` points to another folder (for tests).
     public static var modelsDir: URL {
-        if let custom = ProcessInfo.processInfo.environment["MPXTRANS_MODELS_DIR"], !custom.isEmpty {
+        if let custom = ProcessInfo.processInfo.environment["SLOVO_MODELS_DIR"], !custom.isEmpty {
             return ensureDir(URL(fileURLWithPath: custom, isDirectory: true))
         }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return ensureDir(base.appendingPathComponent("Subtits/Models", isDirectory: true))
+        let subline = base.appendingPathComponent("Subline/Models", isDirectory: true)
+        let subtits = base.appendingPathComponent("Subtits/Models", isDirectory: true)
+        if !isDirectory(subline), isDirectory(subtits) { return subtits }
+        return ensureDir(subline)
+    }
+
+    /// A folder, or a link to one.
+    static func isDirectory(_ url: URL) -> Bool {
+        var directory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &directory) && directory.boolValue
     }
 
     /// A fresh temporary directory for one job (extracted audio).
@@ -54,7 +65,7 @@ public enum AppPaths {
     /// The ffmpeg binary: bundled helper first, then the development copy, then a system install.
     public static var ffmpegURL: URL? {
         var candidates: [URL] = []
-        if let env = ProcessInfo.processInfo.environment["MPXTRANS_FFMPEG"], !env.isEmpty {
+        if let env = ProcessInfo.processInfo.environment["SLOVO_FFMPEG"], !env.isEmpty {
             candidates.append(URL(fileURLWithPath: env))
         }
         candidates.append(Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/ffmpeg"))
