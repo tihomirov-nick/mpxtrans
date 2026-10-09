@@ -2,13 +2,12 @@ import AppKit
 import Combine
 import TransCore
 
-/// The icon in the menu bar while a transcription runs: the app icon in lines, its squircle with the mark inside,
-/// sound waves on the left that run into the middle and calm down there, and the word's line on the right that grows
-/// as recognition goes on. At the end it shows the line whole (or a cross) for a moment
-/// and goes away; a click brings the window forward. The animation is light (4 frames a second) and stops while the
-/// displays sleep or Reduce Motion is on: then only the progress changes the icon. Drawn in code as a template image
-/// like the menu bar icons of the author's other apps: 15 × 16 pt, the glyph in the middle 14 × 14 pt, 1.5 pt lines
-/// with round ends.
+/// The icon in the menu bar while a transcription runs: the mark of the app icon in lines, sound waves on the left that
+/// run into the middle and calm down there, and the word's line on the right that grows as recognition goes on. At the
+/// end it shows the line whole (or a cross) for a moment and goes away; a click brings the window forward. The animation
+/// is light (4 frames a second) and stops while the displays sleep or Reduce Motion is on: then only the progress changes
+/// the icon. Drawn in code as a template image like the menu bar icons of the author's other apps, the mark alone without
+/// the squircle: 15 × 16 pt, the mark 14 pt across, 1.18 pt lines with round ends.
 @MainActor
 final class MenuBarIcon: NSObject {
     /// What the icon shows: where the waves are in their run and the word's line, being written or finished.
@@ -184,27 +183,40 @@ final class MenuBarIcon: NSObject {
 
     // MARK: - Drawing
 
-    /// The image: 15 pt wide, as in the author's other apps, so the icon keeps little empty space at its sides. The glyph
-    /// is laid out on a 16 pt square and drawn half a point to the left, in the middle of the image: at 2x that is one
-    /// pixel, and the 1.5 pt lines still cover whole pixels.
+    /// The image: 15 pt wide, the width of the menu bar icons of all four apps of the family, so the gaps between them
+    /// are the same. The status item is `variableLength`: as wide as the image plus the menu bar's own margins.
     nonisolated static let canvas = NSSize(width: 15, height: 16)
 
-    /// Where the mark goes inside the squircle, in points of the 16 pt square (y down): the waves from `waveLeft` to
-    /// `middle`, the line on to `lineEnd`, both along `axis`. The axis sits on a quarter point, so that the 1.5 pt line
-    /// covers whole pixels at 2x. Inside the squircle a single wave fits with room between its strokes, and a faint one
-    /// behind it.
+    /// Where the mark lies, in points of the canvas (y down). Like the app icon's mark it is split in the middle of the
+    /// image: the waves on the left half, from `waveLeft`, run into one point at `middle`, and the line goes on to
+    /// `lineEnd`, all along the axis (see `axis`). With its round ends the mark is 14 pt across, and the swing is as
+    /// tall for its length as in the icon.
     private enum Layout {
-        static let waveLeft: CGFloat = 3.75
-        static let middle: CGFloat = 8.25
-        static let lineEnd: CGFloat = 12.25
-        static let axis: CGFloat = 8.25
-        /// How far the solid wave swings at the left edge; the faint one swings `faint` times as far.
-        static let amplitude: CGFloat = 3.25
-        static let faint: CGFloat = 0.8
-        /// How many waves fit between the left edge and the middle.
-        static let cycles: CGFloat = 1
+        /// As thick as the lines of FaceID's icon in the menu bar.
+        static let lineWidth: CGFloat = 1.18
+        static let waveLeft = (MenuBarIcon.canvas.width - 14 + lineWidth) / 2
+        static let middle = MenuBarIcon.canvas.width / 2
+        static let lineEnd = MenuBarIcon.canvas.width - waveLeft
+        /// How far the solid wave swings at the left end; the faint one swings `faint` times as far.
+        static let amplitude: CGFloat = 3.5
+        static let faint: CGFloat = 0.75
+        /// The faint wave is drawn from 2x on: at 1x it has no pixels of its own and only blurs the solid one.
+        static let faintFrom: CGFloat = 2
+        /// A wave and a quarter fit between the left end and the middle.
+        static let cycles: CGFloat = 1.25
         /// The side of the cross that takes the line's place when the transcription fails.
-        static let cross: CGFloat = 2.75
+        static let cross: CGFloat = 3.5
+
+        /// The axis: the middle of the height, moved to where the line covers whole pixels at `scale` as far as it
+        /// can, onto a boundary between pixel rows when the line is an even number of pixels thick (2 at 2x), into the
+        /// middle of a row when it is odd (1 at 1x).
+        static func axis(scale: CGFloat) -> CGFloat {
+            let middle = MenuBarIcon.canvas.height / 2
+            guard scale > 0 else { return middle }
+            let pixels = max(1, (lineWidth * scale).rounded())
+            let offset: CGFloat = pixels.truncatingRemainder(dividingBy: 2) == 1 ? 0.5 : 0
+            return ((middle * scale - offset).rounded(.down) + offset) / scale
+        }
     }
 
     /// At rest the waves lie as the app icon's do: the solid one leaves the axis upwards.
@@ -232,11 +244,12 @@ final class MenuBarIcon: NSObject {
 
     private let live = LiveImage()
 
-    /// Draws a frame on the canvas (y down), the glyph in the middle 14 × 14 pt: 1.5 pt lines with round ends, the far
-    /// wave and what is not written yet faint.
+    /// Draws a frame on the canvas (y down): lines with round ends, the far wave and what is not written yet faint.
     nonisolated static func draw(_ glyph: Glyph, in ctx: CGContext) {
-        ctx.translateBy(x: (canvas.width - 16) / 2, y: (canvas.height - 16) / 2)
-        ctx.setLineWidth(1.5)
+        // The image is drawn once for each pixel density, so the line lands on whole pixels at 1x and at 2x.
+        let scale = abs(ctx.userSpaceToDeviceSpaceTransform.a)
+        let y = Layout.axis(scale: scale)
+        ctx.setLineWidth(Layout.lineWidth)
         ctx.setLineCap(.round)
         ctx.setLineJoin(.round)
         func stroke(_ points: [CGPoint], alpha: CGFloat = 1) {
@@ -244,14 +257,11 @@ final class MenuBarIcon: NSObject {
             ctx.addLines(between: points)
             ctx.strokePath()
         }
-        // The body of the app icon: its squircle along the edge of the 14 pt square.
-        ctx.setStrokeColor(NSColor.black.cgColor)
-        ctx.addPath(squircle(CGRect(x: 1.75, y: 1.75, width: 12.5, height: 12.5)))
-        ctx.strokePath()
         // The waves: the far one behind, swinging less and out of step like the second wave of the app icon.
-        stroke(wave(amplitude: Layout.amplitude * Layout.faint, phase: glyph.phase + 3.6), alpha: 0.45)
-        stroke(wave(amplitude: Layout.amplitude, phase: glyph.phase))
-        let y = Layout.axis
+        if scale >= Layout.faintFrom {
+            stroke(wave(amplitude: Layout.amplitude * Layout.faint, phase: glyph.phase + 3.6, axis: y), alpha: 0.45)
+        }
+        stroke(wave(amplitude: Layout.amplitude, phase: glyph.phase, axis: y))
         if glyph.line == .failed {
             // A cross in the place of the line, at its far end, clear of the waves.
             let right = Layout.lineEnd, left = right - Layout.cross, top = y - Layout.cross / 2, bottom = y + Layout.cross / 2
@@ -272,26 +282,11 @@ final class MenuBarIcon: NSObject {
 
     /// A wave like those of the app icon: its swing holds on the left and fades out towards the middle, where the wave
     /// lies down on the axis and goes on as the line.
-    private nonisolated static func wave(amplitude: CGFloat, phase: CGFloat) -> [CGPoint] {
+    private nonisolated static func wave(amplitude: CGFloat, phase: CGFloat, axis: CGFloat) -> [CGPoint] {
         (0...40).map { i in
             let t = CGFloat(i) / 40
             return CGPoint(x: Layout.waveLeft + (Layout.middle - Layout.waveLeft) * t,
-                           y: Layout.axis + amplitude * pow(cos(.pi / 2 * t), 1.6) * sin(2 * .pi * Layout.cycles * t + phase))
+                           y: axis + amplitude * pow(cos(.pi / 2 * t), 1.6) * sin(2 * .pi * Layout.cycles * t + phase))
         }
-    }
-
-    /// Apple-style continuous corners (superellipse), the squircle of the app icon.
-    private nonisolated static func squircle(_ rect: CGRect, exponent: CGFloat = 5) -> CGPath {
-        let path = CGMutablePath()
-        let a = rect.width / 2, b = rect.height / 2
-        for i in 0...360 {
-            let t = CGFloat(i) / 360 * 2 * .pi
-            let c = cos(t), s = sin(t)
-            let point = CGPoint(x: rect.midX + a * (c < 0 ? -1 : 1) * pow(abs(c), 2 / exponent),
-                                y: rect.midY + b * (s < 0 ? -1 : 1) * pow(abs(s), 2 / exponent))
-            if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
-        }
-        path.closeSubpath()
-        return path
     }
 }
