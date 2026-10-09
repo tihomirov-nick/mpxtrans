@@ -3,7 +3,7 @@ import AppKit
 import TransCore
 
 /// Settings (⌘,): every recognition option, one short row each, the names and terms for Whisper, then the sounds,
-/// the menu bar icon and updates.
+/// the menu bar icon, opening at login and updates.
 struct SettingsView: View {
     @EnvironmentObject var transcriber: Transcriber
     @EnvironmentObject var modelStore: ModelStore
@@ -51,6 +51,7 @@ struct SettingsView: View {
                            help: L("Пока идёт расшифровка, значок в строке меню показывает её ход. Щелчок по нему открывает окно Slovo")) {
                     Switch(isOn: $transcriber.menuBarIcon)
                 }
+                LoginItemRows()
                 UpdateSettingRows()
             }
             .card()

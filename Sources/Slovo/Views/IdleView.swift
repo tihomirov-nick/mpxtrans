@@ -1,20 +1,13 @@
 import SwiftUI
 import TransCore
 
-/// The drop zone and, under it, the settings that matter most as tiles, laid out like Control Center; a new version
-/// of Slovo is offered above.
+/// The drop zone and, under it, the settings that matter most as tiles, laid out like Control Center.
 struct IdleView: View {
     @EnvironmentObject var transcriber: Transcriber
-    @EnvironmentObject var updater: Updater
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var isTargeted: Bool
 
     var body: some View {
         VStack(spacing: Layout.spacing) {
-            if offersUpdate {
-                UpdateCard()
-                    .transition(.blurAppear(reduceMotion: reduceMotion))
-            }
             DropCard(isTargeted: isTargeted)
                 // Off for the second or two an update takes to install.
                 .disabled(transcriber.isUpdating)
@@ -27,14 +20,6 @@ struct IdleView: View {
                 SwitchTile(symbol: "scope", title: L("Точный режим"), isOn: $transcriber.beamSearch,
                            help: L("Whisper перебирает несколько вариантов каждой фразы: ошибок меньше, но распознавание медленнее"))
             }
-        }
-        .animation(Motion.animation(Motion.spring, reduceMotion: reduceMotion), value: offersUpdate)
-    }
-
-    private var offersUpdate: Bool {
-        switch updater.state {
-        case .available, .downloading, .installing, .failed(_, .some): return true
-        default: return false
         }
     }
 }

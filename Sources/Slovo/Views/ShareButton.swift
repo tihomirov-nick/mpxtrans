@@ -8,11 +8,13 @@ struct ShareButton: View {
     let text: () -> String
     /// Subject for services that support one (Mail).
     let subject: String
+    /// Runs once a service has sent the text.
+    var shared: () -> Void = {}
     @State private var anchor = SharingAnchor()
 
     var body: some View {
         Button {
-            anchor.share(text(), subject: subject)
+            anchor.share(text(), subject: subject, shared: shared)
         } label: {
             RoundIcon(symbol: "square.and.arrow.up", size: 30)
                 .background(AnchorView(anchor: anchor.anchor))
@@ -27,10 +29,12 @@ struct ShareButton: View {
 final class SharingAnchor: NSObject, NSSharingServicePickerDelegate, NSSharingServiceDelegate {
     let anchor = ViewAnchor()
     private var subject = ""
+    private var shared: () -> Void = {}
 
-    func share(_ text: String, subject: String) {
+    func share(_ text: String, subject: String, shared: @escaping () -> Void = {}) {
         guard let view = anchor.view else { return }
         self.subject = subject
+        self.shared = shared
         let picker = NSSharingServicePicker(items: [text])
         picker.delegate = self
         picker.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
@@ -47,7 +51,11 @@ final class SharingAnchor: NSObject, NSSharingServicePickerDelegate, NSSharingSe
     }
 
     func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
-        onMain { SoundEffects.play(.send) }
+        let shared = self.shared
+        onMain {
+            shared()
+            SoundEffects.play(.send)
+        }
     }
 
     // A service shows its window (Messages, AirDrop) at the share button, where the menu was.

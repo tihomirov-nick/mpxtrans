@@ -27,6 +27,10 @@ func onMain(_ body: @escaping @MainActor () -> Void) {
 /// The window's state: settings, the running job and its result.
 @MainActor
 final class Transcriber: ObservableObject {
+    /// Made once, at launch: the window shows it, and the app delegate gives it to the updater and the menu bar icon,
+    /// with or without the window.
+    static let shared = Transcriber()
+
     enum Phase: Equatable {
         case idle, working, done
     }
@@ -98,6 +102,15 @@ final class Transcriber: ObservableObject {
     }
     /// The models window should open (a view does it: only views can open windows).
     @Published var modelManagerRequested = false
+    /// The transcript has been saved, copied or shared since it appeared or was last edited.
+    @Published private(set) var resultTaken = false
+
+    /// A transcript that only this window holds: Slovo does not ask before quitting, so a restart would lose it.
+    var hasUnsavedResult: Bool { phase == .done && !resultTaken }
+
+    /// A restart now would lose something: a transcription, a transcript that only this window holds, a model being
+    /// downloaded. An update that installs itself waits until this passes.
+    var holdsWork: Bool { phase == .working || hasUnsavedResult || !modelStore.downloads.isEmpty }
 
     private var originals: [TranscriptFormat: String] = [:]
     /// The last shown text of each format: SwiftUI asks for it several times per change.
@@ -316,6 +329,7 @@ final class Transcriber: ObservableObject {
             originals[format] = format.render(result.segments)
         }
         texts = originals
+        resultTaken = false
         phase = .done
         SoundEffects.play(.success)
         if !NSApp.isActive {
@@ -424,7 +438,9 @@ final class Transcriber: ObservableObject {
 
     /// An edit of the shown text: it goes into the text under the variant (see `TextTransformer.merge`).
     func editShownText(_ edited: String) {
-        texts[format] = format.merge(edited, into: texts[format] ?? "", mode: caseMode)
+        let merged = format.merge(edited, into: texts[format] ?? "", mode: caseMode)
+        if resultTaken, merged != texts[format] { resultTaken = false }
+        texts[format] = merged
     }
 
     var isEdited: Bool {
@@ -433,6 +449,12 @@ final class Transcriber: ObservableObject {
 
     func revertEdits() {
         texts[format] = originals[format]
+        if resultTaken { resultTaken = false }
+    }
+
+    /// The transcript went out through the share menu.
+    func resultShared() {
+        if phase == .done { resultTaken = true }
     }
 
     var wordCountText: String {
@@ -455,6 +477,7 @@ final class Transcriber: ObservableObject {
     func copyText(to pasteboard: NSPasteboard = .general) {
         pasteboard.clearContents()
         pasteboard.setString(currentText, forType: .string)
+        if phase == .done { resultTaken = true }
         SoundEffects.play(.tick)
     }
 
@@ -483,6 +506,7 @@ final class Transcriber: ObservableObject {
     func write(to url: URL) -> Bool {
         do {
             try currentText.write(to: url, atomically: true, encoding: .utf8)
+            if phase == .done { resultTaken = true }
             SoundEffects.play(.send)
             return true
         } catch {

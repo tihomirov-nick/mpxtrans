@@ -3,10 +3,12 @@ import UniformTypeIdentifiers
 import TransCore
 
 /// The small window: drop zone and settings tiles, then progress with live text, then the transcript with copy,
-/// save and share. Each stage replaces the previous one out of a blur.
+/// save and share. Each stage replaces the previous one out of a blur. A new version of Slovo is offered above every
+/// stage but a running transcription.
 struct ContentView: View {
     @EnvironmentObject var transcriber: Transcriber
     @EnvironmentObject var modelStore: ModelStore
+    @EnvironmentObject var updater: Updater
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var debug = DebugHooks.State.shared
@@ -15,17 +17,23 @@ struct ContentView: View {
     private var dropTargeted: Bool { dragTargeted || debug.dropTargeted }
 
     var body: some View {
-        ZStack {
-            switch transcriber.phase {
-            case .idle:
-                IdleView(isTargeted: dropTargeted)
+        VStack(spacing: Layout.spacing) {
+            if showsUpdate {
+                UpdateCard()
                     .transition(.blurAppear(reduceMotion: reduceMotion))
-            case .working:
-                WorkingView()
-                    .transition(.blurAppear(reduceMotion: reduceMotion))
-            case .done:
-                ResultView()
-                    .transition(.blurAppear(reduceMotion: reduceMotion))
+            }
+            ZStack {
+                switch transcriber.phase {
+                case .idle:
+                    IdleView(isTargeted: dropTargeted)
+                        .transition(.blurAppear(reduceMotion: reduceMotion))
+                case .working:
+                    WorkingView()
+                        .transition(.blurAppear(reduceMotion: reduceMotion))
+                case .done:
+                    ResultView()
+                        .transition(.blurAppear(reduceMotion: reduceMotion))
+                }
             }
         }
         .padding([.horizontal, .bottom], Layout.padding)
@@ -38,6 +46,7 @@ struct ContentView: View {
         }
         .blackWindow()
         .animation(Motion.animation(Motion.spring, reduceMotion: reduceMotion), value: transcriber.phase)
+        .animation(Motion.animation(Motion.spring, reduceMotion: reduceMotion), value: showsUpdate)
         .animation(Motion.animation(Motion.quick, reduceMotion: reduceMotion), value: dropTargeted)
         .onDrop(of: [.fileURL], delegate: FileDrop(transcriber: transcriber, isTargeted: $dragTargeted))
         .alert(L("Не получилось"), isPresented: Binding(
@@ -61,11 +70,31 @@ struct ContentView: View {
         .onChange(of: modelStore.installed) { _ in
             transcriber.ensureValidModelSelection()
         }
+        .onChange(of: updater.freshOffer) { _ in noteOffer() }
+        .onChange(of: transcriber.phase) { _ in noteOffer() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in noteOffer() }
         .onAppear {
-            if !modelStore.hasAnyModel { openWindow(id: "models") }
+            // In the background the models window waits for the main one (`MainWindow.show`).
+            if !modelStore.hasAnyModel && !MainWindow.inBackground { openWindow(id: "models") }
         }
     }
 
+    /// A new version, its download and installation, a failed update: on the card above every stage but a transcription.
+    private var showsUpdate: Bool {
+        guard transcriber.phase != .working else { return false }
+        switch updater.state {
+        case .available, .downloading, .installing, .failed(_, .some): return true
+        default: return false
+        }
+    }
+
+    /// A version an automatic check has found is on the card (its state is `.available`) as soon as the window is in
+    /// sight and no transcription runs: that is when it counts as shown.
+    private func noteOffer() {
+        guard updater.freshOffer != nil, transcriber.phase != .working, !MainWindow.inBackground,
+              MainWindow.window?.isVisible == true else { return }
+        updater.offerShown()
+    }
 }
 
 /// A file dragged onto the window. While an update is being installed it is refused, and macOS shows the usual

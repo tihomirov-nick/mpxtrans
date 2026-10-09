@@ -153,7 +153,8 @@ private struct WindowTitle: View {
     }
 }
 
-/// Dark appearance and a black background for the hosting window (no flash of gray while it opens or resizes).
+/// Dark appearance and a black background for the hosting window (no flash of gray while it opens or resizes). A window
+/// that opens while Slovo runs in the background (see `MainWindow`) goes away.
 struct BlackWindow: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         WindowHook()
@@ -167,6 +168,12 @@ struct BlackWindow: NSViewRepresentable {
             guard let window else { return }
             window.appearance = NSAppearance(named: .darkAqua)
             window.backgroundColor = .black
+            if MainWindow.inBackground {
+                // After SwiftUI has put it on screen.
+                onMain { [weak window] in
+                    if MainWindow.inBackground { window?.orderOut(nil) }
+                }
+            }
         }
     }
 }

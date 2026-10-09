@@ -74,7 +74,8 @@ private struct ActionBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            ShareButton(text: { transcriber.currentText }, subject: transcriber.baseName)
+            ShareButton(text: { transcriber.currentText }, subject: transcriber.baseName,
+                        shared: { transcriber.resultShared() })
             if transcriber.isEdited {
                 Button {
                     transcriber.revertEdits()

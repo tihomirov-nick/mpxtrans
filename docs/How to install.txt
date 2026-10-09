@@ -73,14 +73,25 @@ SETTINGS (⌘, or the gear in the window)
     window forward.
 
 UPDATES
-Once a day Slovo checks GitHub for a new version. If there is one, a card
-with "Update", "Later" and "Skip" appears above the drop area. "Update"
-downloads the new version, checks its signature, puts it in place of the
-old one and restarts Slovo. Nothing is installed while a transcription
-runs.
+Slovo looks for a new version on GitHub right after launch and then every
+three hours. It downloads a new version by itself, checks its signature
+and installs it when Slovo is idle. While a transcription runs or the
+finished text is not saved or copied yet, the update waits. Before the
+restart the window shows "Updating to version…" for a moment. If you quit
+Slovo first, the new version goes in when it quits.
 
-To check by hand, choose "Check for Updates…" in the Slovo menu. To turn
-automatic checks off, use the "Check for Updates" switch in Settings.
+With "Install Updates Automatically" turned off in Settings, Slovo shows
+a card with "Update", "Later" and "Skip" above the window's content
+instead. To check by hand, choose "Check for Updates…" in the Slovo menu.
+The "Check for Updates" switch in Settings turns the checks off
+altogether.
+
+OPEN AT LOGIN
+Slovo opens at login without a window or a Dock icon, to install updates
+on time. macOS shows a notification when Slovo adds itself to the login
+items for the first time. The window appears when you open Slovo from
+Launchpad, Finder or the Dock, or open a file with it. To stop it, turn
+off "Open at Login" in Settings.
 
 SHORTCUTS
   ⌘O ................ open a file

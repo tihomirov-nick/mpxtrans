@@ -105,6 +105,7 @@ struct SettingRow<Control: View>: View {
     var help: String?
     var last = false
     @ViewBuilder let control: Control
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         HStack(spacing: 8) {
@@ -114,6 +115,8 @@ struct SettingRow<Control: View>: View {
             Spacer(minLength: 6)
             control
         }
+        // Dimmed when it does not apply, the line under it stays.
+        .opacity(isEnabled ? 1 : 0.4)
         .padding(.horizontal, 12)
         .frame(height: 38)
         .contentShape(Rectangle())

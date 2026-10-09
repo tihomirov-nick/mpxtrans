@@ -106,10 +106,7 @@ final class MenuBarIcon: NSObject {
     }
 
     @objc private func bringWindowForward() {
-        NSApp.activate(ignoringOtherApps: true)
-        guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue.contains("main") == true }) else { return }
-        if window.isMiniaturized { window.deminiaturize(nil) }
-        window.makeKeyAndOrderFront(nil)
+        MainWindow.show()
     }
 
     // MARK: - Animation
