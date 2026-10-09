@@ -7,7 +7,7 @@ import TransCore
 /// as recognition goes on. At the end it shows the line whole (or a cross) for a moment
 /// and goes away; a click brings the window forward. The animation is light (4 frames a second) and stops while the
 /// displays sleep or Reduce Motion is on: then only the progress changes the icon. Drawn in code as a template image
-/// like the menu bar icons of the author's other apps: 16 × 16 pt, the glyph in the middle 14 × 14 pt, 1.5 pt lines
+/// like the menu bar icons of the author's other apps: 15 × 16 pt, the glyph in the middle 14 × 14 pt, 1.5 pt lines
 /// with round ends.
 @MainActor
 final class MenuBarIcon: NSObject {
@@ -184,7 +184,12 @@ final class MenuBarIcon: NSObject {
 
     // MARK: - Drawing
 
-    /// Where the mark goes inside the squircle, in points of the 16 pt canvas (y down): the waves from `waveLeft` to
+    /// The image: 15 pt wide, as in the author's other apps, so the icon keeps little empty space at its sides. The glyph
+    /// is laid out on a 16 pt square and drawn half a point to the left, in the middle of the image: at 2x that is one
+    /// pixel, and the 1.5 pt lines still cover whole pixels.
+    nonisolated static let canvas = NSSize(width: 15, height: 16)
+
+    /// Where the mark goes inside the squircle, in points of the 16 pt square (y down): the waves from `waveLeft` to
     /// `middle`, the line on to `lineEnd`, both along `axis`. The axis sits on a quarter point, so that the 1.5 pt line
     /// covers whole pixels at 2x. Inside the squircle a single wave fits with room between its strokes, and a faint one
     /// behind it.
@@ -214,7 +219,7 @@ final class MenuBarIcon: NSObject {
     private final class LiveImage {
         var glyph = Glyph(phase: MenuBarIcon.restingPhase, line: .progress(0))
         lazy var image: NSImage = {
-            let image = NSImage(size: NSSize(width: 16, height: 16), flipped: true) { [unowned self] _ in
+            let image = NSImage(size: MenuBarIcon.canvas, flipped: true) { [unowned self] _ in
                 guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
                 MenuBarIcon.draw(self.glyph, in: ctx)
                 return true
@@ -227,9 +232,10 @@ final class MenuBarIcon: NSObject {
 
     private let live = LiveImage()
 
-    /// Draws a frame on the 16 × 16 pt canvas (y down), the glyph in the middle 14 × 14 pt: 1.5 pt lines with round
-    /// ends, the far wave and what is not written yet faint.
+    /// Draws a frame on the canvas (y down), the glyph in the middle 14 × 14 pt: 1.5 pt lines with round ends, the far
+    /// wave and what is not written yet faint.
     nonisolated static func draw(_ glyph: Glyph, in ctx: CGContext) {
+        ctx.translateBy(x: (canvas.width - 16) / 2, y: (canvas.height - 16) / 2)
         ctx.setLineWidth(1.5)
         ctx.setLineCap(.round)
         ctx.setLineJoin(.round)

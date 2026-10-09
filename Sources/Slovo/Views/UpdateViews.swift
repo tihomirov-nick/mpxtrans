@@ -33,8 +33,8 @@ struct UpdateCard: View {
                     Button(L("Обновить")) { updater.install() }
                         .appButton(.primary)
                         .controlSize(.small)
-                        .help(updater.canInstallInPlace ? L("Скачать, установить и перезапустить Slovo")
-                                                        : L("Скачать DMG и открыть его в Finder. Заменить приложение в этой папке нельзя"))
+                        .help(updater.installsByItself ? L("Скачать, установить и перезапустить Slovo")
+                                                       : L("Скачать установщик и открыть его в Finder. Новую версию нужно будет поставить вручную"))
                 }
             }
         case .downloading(let release, let progress):
@@ -50,17 +50,18 @@ struct UpdateCard: View {
             card(symbol: "arrow.down", tint: Brand.color, title: L("Устанавливаю обновление…"),
                  detail: L("Версия %@, после установки перезапущусь", release.version), progress: .some(nil)) { EmptyView() }
         case .failed(.cannotReplace, .some(let release)) where !updater.isDevelopmentBuild:
-            // Downloaded, but this copy cannot be replaced (not in a writable folder): the DMG opens in Finder.
+            // Downloaded, but it could go neither over this copy nor into an Applications folder: the installer opens
+            // in Finder.
             card(symbol: "arrow.down", tint: Brand.color, title: L("Версия %@ скачана", release.version),
-                 detail: L("Перетащите Slovo из DMG в папку «Программы», и дальше обновления будут ставиться автоматически")) {
+                 detail: L("Не получилось поставить новую версию. Откройте установщик и перетащите Slovo в папку «Программы»")) {
                 Spacer(minLength: 8)
                 Button(L("Позже")) { updater.dismiss() }
                     .appButton(.secondary)
                     .controlSize(.small)
-                Button(L("Открыть DMG")) { updater.openReleasePage() }
+                Button(L("Открыть установщик")) { updater.openReleasePage() }
                     .appButton(.primary)
                     .controlSize(.small)
-                    .help(L("Показать скачанный DMG в Finder"))
+                    .help(L("Показать скачанный установщик в Finder"))
             }
         case .failed(let failure, .some(let release)):
             card(symbol: "exclamationmark", tint: .orange, title: L("Не удалось обновить до версии %@", release.version),
@@ -77,10 +78,10 @@ struct UpdateCard: View {
     }
 
     private var releasePageButton: some View {
-        Button(L("Страница релиза")) { updater.openReleasePage() }
+        Button(L("Скачать вручную")) { updater.openReleasePage() }
             .appButton(.primary)
             .controlSize(.small)
-            .help(L("Открыть релиз на GitHub, там можно скачать DMG"))
+            .help(L("Открыть страницу новой версии в браузере, там можно скачать установщик"))
     }
 
     /// `progress`: nil for no bar, .some(nil) for a bar without a value.
@@ -133,7 +134,7 @@ struct UpdateSettingRows: View {
 
     var body: some View {
         SettingRow(title: L("Проверять обновления"),
-                   help: L("Раз в день Slovo смотрит, нет ли нового релиза на GitHub, и предлагает обновиться")) {
+                   help: L("Раз в день Slovo смотрит, нет ли новой версии, и предлагает обновиться")) {
             Switch(isOn: $updater.automaticChecks)
         }
         HStack(spacing: 8) {
@@ -172,7 +173,7 @@ struct UpdateSettingRows: View {
         default:
             return updater.isDevelopmentBuild
                 ? L("Slovo запущен из папки сборки, такая копия не проверяет и не ставит обновления")
-                : L("Обновления приходят из релизов Slovo на GitHub")
+                : L("Новую версию Slovo ставит сам и перезапускается")
         }
     }
 
@@ -191,11 +192,11 @@ extension Updater {
 /// What went wrong, in a line; `short` fits next to the version in Settings.
 func updateFailureText(_ failure: Updater.Failure, short: Bool = false) -> String {
     switch failure {
-    case .offline: return L("Нет связи с GitHub")
-    case .rateLimited: return short ? L("Проверки ограничены") : L("GitHub временно ограничил проверки, попробуйте позже")
-    case .noInstaller: return short ? L("Нет DMG") : L("В релизе нет DMG")
+    case .offline: return short ? L("Нет связи") : L("Нет связи с сервером обновлений")
+    case .rateLimited: return short ? L("Проверки ограничены") : L("Сервер обновлений временно ограничил проверки, попробуйте позже")
+    case .noInstaller: return short ? L("Нет установщика") : L("У новой версии нет установщика")
     case .download: return L("Загрузка прервалась")
-    case .damaged: return L("DMG повреждён")
+    case .damaged: return L("Установщик повреждён")
     case .notTrusted: return short ? L("Чужая подпись") : L("Подпись обновления не совпадает с подписью Slovo")
     case .cannotReplace: return L("Не удалось заменить приложение")
     }

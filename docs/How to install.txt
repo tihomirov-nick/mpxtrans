@@ -2,8 +2,10 @@ SLOVO
 =====
 
 INSTALLING
-1. Drag the Slovo icon onto the Applications folder next to it.
-2. Open the Applications folder in Finder and launch Slovo.
+Open Slovo right from this window. It moves itself to the Applications
+folder and restarts from there. Without administrator rights, Slovo goes
+to the Applications folder inside your home folder. You can also drag
+the Slovo icon onto the Applications folder next to it.
 
 If MPXTrans (the earlier name of Slovo) is on this Mac, Slovo takes over its
 settings on the first launch, and MPXTrans can be deleted.
@@ -20,7 +22,8 @@ of malware"). You only need to allow it once.
   • On macOS 13–14, right-click Slovo in Finder, choose "Open", then
     click "Open" again in the warning.
 
-  • If that didn't help, open Terminal and run:
+  • If that didn't help, drag Slovo onto the Applications folder, open
+    Terminal and run:
         xattr -dr com.apple.quarantine /Applications/Slovo.app
 
 FIRST LAUNCH
@@ -77,9 +80,7 @@ old one and restarts Slovo. Nothing is installed while a transcription
 runs.
 
 To check by hand, choose "Check for Updates…" in the Slovo menu. To turn
-automatic checks off, use the "Check for Updates" switch in Settings. If
-Slovo is started right from the DMG or from Downloads, it can't replace
-itself, and the new version has to be dragged to Applications by hand.
+automatic checks off, use the "Check for Updates" switch in Settings.
 
 SHORTCUTS
   ⌘O ................ open a file
