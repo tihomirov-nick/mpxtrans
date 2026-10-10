@@ -7,8 +7,8 @@ import TransCore
 /// works the line is dashed, as if not written yet; at the end the icon shows the line whole (or a cross in its place when
 /// the transcription failed) for a moment and goes away. A click brings the window forward, a right or Control click opens
 /// a menu: stop recognition, then the tail every app of the family has (Settings, updates, About, Quit). Drawn in code as
-/// a template image like the menu bar icons of the author's other apps, the mark alone without the squircle: 21 × 22 pt,
-/// the mark 20 pt across, 1.7 pt lines with round ends.
+/// a template image like the menu bar icons of the author's other apps, the mark alone without the squircle: 17 × 22 pt,
+/// the mark 16 pt across, as big as the menu bar's own icons (Wi-Fi, Control Center), 1.36 pt lines with round ends.
 @MainActor
 final class MenuBarIcon: NSObject {
     /// What the icon shows.
@@ -191,28 +191,29 @@ final class MenuBarIcon: NSObject {
 
     // MARK: - Drawing
 
-    /// The image: 21 × 22 pt. 22 pt is the height of the menu bar's own icons; the width is the mark's 20 pt with half a
+    /// The image: 17 × 22 pt. 22 pt is the height of the menu bar's own items; the width is the mark's 16 pt with half a
     /// point to spare on each side, as the 15 pt canvas had around the 14 pt mark. The status item is `variableLength`:
     /// as wide as the image plus the menu bar's own margins.
-    nonisolated static let canvas = NSSize(width: 21, height: 22)
+    nonisolated static let canvas = NSSize(width: 17, height: 22)
 
     /// Where the mark lies, in points of the canvas (y down). Like the app icon's mark it is split in the middle of the
     /// image: the wave on the left half, from `waveLeft`, runs into one point at `middle`, and the line goes on to
     /// `lineEnd`, all along the axis (see `axis`). With its round ends the mark is `markWidth` across, and the swing is as
-    /// tall for its length as in the icon. Scaled up from the 14 pt mark with 1.18 pt lines by 20 / 14.
+    /// tall for its length as in the icon. The mark as it was at 20 pt across, with 1.7 pt lines, scaled by 16 / 20 (and
+    /// before that scaled up from 14 pt with 1.18 pt lines): the lines and the swing shrink with it.
     enum Layout {
-        static let markWidth: CGFloat = 20
-        /// The thickness of the lines, in the same proportion to the mark as before.
-        static let lineWidth: CGFloat = 1.7
+        static let markWidth: CGFloat = 16
+        /// The thickness of the lines, in the same proportion to the mark as before: 1.7 pt on 20, 1.18 on 14.
+        static let lineWidth: CGFloat = 1.36
         static let waveLeft = (MenuBarIcon.canvas.width - markWidth + lineWidth) / 2
         static let middle = MenuBarIcon.canvas.width / 2
         static let lineEnd = MenuBarIcon.canvas.width - waveLeft
         /// How far the wave swings at the left end.
-        static let amplitude: CGFloat = 5
+        static let amplitude: CGFloat = 4
         /// A wave and a quarter fit between the left end and the middle.
         static let cycles: CGFloat = 1.25
         /// The side of the cross that takes the line's place when the transcription fails.
-        static let cross: CGFloat = 5
+        static let cross: CGFloat = 4
         /// While the word is not written yet the line is dashed, in the same black and as thick as the whole line: this
         /// many dashes between the middle and the line's end.
         static let dashes = 3

@@ -35,13 +35,20 @@ final class MenuBarGlyphTests: XCTestCase {
                       width: CGFloat(maxX - minX + 1) / s, height: CGFloat(maxY - minY + 1) / s)
     }
 
-    func testTheGlyphIsAsLargeAsTheMenuBarAllows() {
+    func testTheGlyphIsTheSizeOfTheMenuBarsOwnIcons() {
         XCTAssertEqual(MenuBarIcon.canvas.height, 22)
+        XCTAssertEqual(MenuBarIcon.canvas.width, 17)
         for scale in [1, 2, 3] {
             let box = box(.done, scale: scale)
-            // About 20 pt across, the mark of the family's icons scaled up from 14.
-            XCTAssertGreaterThanOrEqual(box.width, 19.5, "scale \(scale)")
-            XCTAssertLessThanOrEqual(box.width, MenuBarIcon.canvas.width, "scale \(scale)")
+            // About 16 pt across, like Wi-Fi and Control Center (the rule of the family is 16 pt tall and no wider than
+            // 20 pt; this wide, low mark is as wide as the others are tall). On a plain screen the round ends of the line
+            // cover half a pixel more on each side, so the box may be the whole 17 pt canvas there.
+            XCTAssertGreaterThanOrEqual(box.width, 15.5, "scale \(scale)")
+            XCTAssertLessThanOrEqual(box.width, scale == 1 ? MenuBarIcon.canvas.width : 16.5, "scale \(scale)")
+            XCTAssertLessThanOrEqual(box.height, 16, "scale \(scale)")
+            // The word's line lies on the middle of the 22 pt canvas, as before; the wave swings mostly upwards from it.
+            XCTAssertEqual(MenuBarIcon.Layout.axis(scale: CGFloat(scale)), MenuBarIcon.canvas.height / 2, accuracy: 0.5, "scale \(scale)")
+            XCTAssertEqual(box.midY, MenuBarIcon.canvas.height / 2, accuracy: 2, "scale \(scale)")
         }
     }
 
@@ -62,8 +69,9 @@ final class MenuBarGlyphTests: XCTestCase {
     }
 
     func testTheLinesAreThickerInProportionToTheLargerMark() {
-        // 1.18 pt on a mark 14 pt across before; the same share of 20 pt now.
+        // 1.18 pt on a mark 14 pt across, 1.7 on 20 before; the same share of 16 pt now.
         XCTAssertEqual(MenuBarIcon.Layout.lineWidth / MenuBarIcon.Layout.markWidth, 1.18 / 14, accuracy: 0.005)
+        XCTAssertEqual(MenuBarIcon.Layout.lineWidth / MenuBarIcon.Layout.markWidth, 1.7 / 20, accuracy: 0.0005)
     }
 
     func testTheStatesDifferAndStayTheSame() {
