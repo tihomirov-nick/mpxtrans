@@ -102,6 +102,8 @@ final class Transcriber: ObservableObject {
     }
     /// The models window should open (a view does it: only views can open windows).
     @Published var modelManagerRequested = false
+    /// How many times Settings were asked for from outside a view (the menu bar icon's menu); each one opens the window.
+    @Published var settingsRequests = 0
     /// The transcript has been saved, copied or shared since it appeared or was last edited.
     @Published private(set) var resultTaken = false
 

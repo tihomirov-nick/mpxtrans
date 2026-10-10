@@ -158,7 +158,7 @@ struct LoginItemRows: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
         if needsApproval {
             HStack(spacing: 8) {
-                Text(L("Выключено в macOS"))
+                Text(L("Выключено в Системных настройках"))
                     .font(.system(size: 12))
                     .foregroundStyle(Palette.secondaryText)
                     .lineLimit(1)
@@ -188,7 +188,7 @@ struct UpdateSettingRows: View {
 
     var body: some View {
         SettingRow(title: L("Проверять обновления"),
-                   help: L("Slovo смотрит, нет ли новой версии, сразу после запуска и потом каждые три часа")) {
+                   help: L("Slovo смотрит, нет ли новой версии, при запуске, раз в три часа и после пробуждения Mac")) {
             Switch(isOn: $updater.automaticChecks)
         }
         SettingRow(title: L("Обновлять автоматически"),

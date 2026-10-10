@@ -2,18 +2,26 @@
 // Usage: swift scripts/make_icon.swift
 //
 // Sound becoming a word: on the left half thin sound waves weave through each other and calm down, meeting in the middle
-// in one point, from which a single straight line goes on to the right. Flat and black and white like the icons of the
-// author's other apps: a pure black body, white lines, the two far waves grey (white at 45 %), no gradients or shadows.
+// in one point, from which a single straight line goes on to the right. Flat and strictly black and white like the icons
+// of the author's other apps: a pure black body, pure white lines, no grays, gradients or shadows.
 import AppKit
 
 let bodyColor: (red: CGFloat, green: CGFloat, blue: CGFloat) = (0, 0, 0)
 
+/// The side of the body, the squircle of the flat drawing, in a 1024 square: it lies at 100...924.
+let bodySize: CGFloat = 824
+/// How much of the body's width the mark spans, round ends included. The mark is a strip in the middle of the tile (the
+/// waves, its tallest part, are 38 % of the body high), so it stays far from the rounded corners, and only the margin at
+/// the sides limits it: 10 % of the body on each side.
+let markShare: CGFloat = 0.80
+
 /// The mark, drawn with the current (white) colours in the flat drawing's coordinates: a 1024 square whose body is the
 /// squircle at 100...924, y growing upwards.
 func drawMark(_ ctx: CGContext) {
-    // With its round ends the mark spans 196...828, as wide as Subline's; the waves fill the left half up to the
-    // middle, 512.
+    // Designed 632 across with its round ends (196...828), the waves filling the left half up to the middle, 512, and
+    // scaled about the middle of the tile to `markShare` of the body.
     let left: CGFloat = 208, middle: CGFloat = 512, right: CGFloat = 816, axis: CGFloat = 512
+    let designedWidth: CGFloat = 632
     /// A sine wave whose swing holds on the left and fades smoothly to nothing in the middle, where the wave lies
     /// down on the axis and becomes the line.
     func wave(amplitude: CGFloat, cycles: CGFloat, phase: CGFloat) -> CGPath {
@@ -27,26 +35,22 @@ func drawMark(_ ctx: CGContext) {
         return path
     }
     ctx.saveGState()
-    // Thin lines, about a third of Subline's pills, still a pixel at 32 px.
+    let scale = bodySize * markShare / designedWidth
+    ctx.translateBy(x: middle, y: axis)
+    ctx.scaleBy(x: scale, y: scale)
+    ctx.translateBy(x: -middle, y: -axis)
+    // Thin lines, still a pixel at 32 px.
     ctx.setLineWidth(24)
     ctx.setLineCap(.round)
     ctx.setLineJoin(.round)
-    // The far waves, grey: white at 45 % over the black body.
-    let far = CGMutablePath()
-    far.addPath(wave(amplitude: 140, cycles: 1.8, phase: 1.7))
-    far.addPath(wave(amplitude: 95, cycles: 2.0, phase: 4.6))
-    ctx.setAlpha(0.45)
-    ctx.addPath(far)
-    ctx.strokePath()
-    // The near waves, of slightly different lengths and almost opposite phases so that they cross each other, and
-    // the word's line, white.
-    let near = CGMutablePath()
-    near.addPath(wave(amplitude: 170, cycles: 1.6, phase: 0))
-    near.addPath(wave(amplitude: 120, cycles: 1.9, phase: 3.6))
-    near.move(to: CGPoint(x: middle, y: axis))
-    near.addLine(to: CGPoint(x: right, y: axis))
-    ctx.setAlpha(1)
-    ctx.addPath(near)
+    // Two waves of slightly different lengths and almost opposite phases so that they cross each other, and the
+    // word's line, all white.
+    let strokes = CGMutablePath()
+    strokes.addPath(wave(amplitude: 170, cycles: 1.6, phase: 0))
+    strokes.addPath(wave(amplitude: 120, cycles: 1.9, phase: 3.6))
+    strokes.move(to: CGPoint(x: middle, y: axis))
+    strokes.addLine(to: CGPoint(x: right, y: axis))
+    ctx.addPath(strokes)
     ctx.strokePath()
     ctx.restoreGState()
 }
@@ -96,7 +100,7 @@ let package = root.appendingPathComponent("Resources/AppIcon.icon")
 try? FileManager.default.removeItem(at: package)
 try FileManager.default.createDirectory(at: package.appendingPathComponent("Assets"), withIntermediateDirectories: true)
 try writePNG(image { ctx in
-    ctx.scaleBy(x: 1024 / 824, y: 1024 / 824)
+    ctx.scaleBy(x: 1024 / bodySize, y: 1024 / bodySize)
     ctx.translateBy(x: -100, y: -100)
     drawMark(ctx)
 }, to: package.appendingPathComponent("Assets/mark.png"))
@@ -137,7 +141,7 @@ try Data("""
 
 // Resources/AppIcon-1024.png: the whole icon, the body in the squircle with the mark, for the README.
 try writePNG(image { ctx in
-    ctx.addPath(squircle(CGRect(x: 100, y: 100, width: 824, height: 824)))
+    ctx.addPath(squircle(CGRect(x: 100, y: 100, width: bodySize, height: bodySize)))
     ctx.setFillColor(CGColor(colorSpace: space, components: [bodyColor.red, bodyColor.green, bodyColor.blue, 1])!)
     ctx.fillPath()
     ctx.setFillColor(white)

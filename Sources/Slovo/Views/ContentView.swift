@@ -62,6 +62,9 @@ struct ContentView: View {
             transcriber.modelManagerRequested = false
             openWindow(id: "models")
         }
+        .onChange(of: transcriber.settingsRequests) { _ in
+            openWindow(id: "settings")
+        }
         .onChange(of: debug.openWindow) { id in
             guard let id else { return }
             debug.openWindow = nil

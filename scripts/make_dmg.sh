@@ -7,7 +7,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-VERSION="${VERSION:-1.2.5}"
+VERSION="${VERSION:-1.2.6}"
 export VERSION
 
 OWN_IDENTITY="tihomirov-nick"

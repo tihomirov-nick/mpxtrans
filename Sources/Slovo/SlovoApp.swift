@@ -50,7 +50,7 @@ struct SlovoApp: App {
                 .environmentObject(updater)
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 400, height: 560)
+        .defaultSize(width: 400, height: 606)
         .windowResizability(.contentMinSize)
     }
 }
@@ -89,6 +89,10 @@ struct AppCommands: Commands {
                 .disabled(transcriber.phase == .idle)
         }
         CommandGroup(replacing: .saveItem) {
+            // The system's "Close" belongs to the same group: replacing it takes ⌘W away, so it is put back.
+            Button(L("Закрыть")) { NSApp.keyWindow?.performClose(nil) }
+                .keyboardShortcut("w", modifiers: .command)
+            Divider()
             Button(L("Сохранить…")) { transcriber.save() }
                 .keyboardShortcut("s", modifiers: .command)
                 .disabled(transcriber.phase != .done)

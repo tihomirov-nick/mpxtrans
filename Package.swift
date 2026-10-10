@@ -51,5 +51,11 @@ let package = Package(
             dependencies: ["TransCore"],
             path: "Tests/TransCoreTests"
         ),
+        // Tests of the application's own parts (the menu bar icon)
+        .testTarget(
+            name: "SlovoTests",
+            dependencies: ["Slovo", "TransCore"],
+            path: "Tests/SlovoTests"
+        ),
     ]
 )
